@@ -13,13 +13,29 @@ interface Sector {
 export default function SectorPicker({ sectors }: { sectors: Sector[] }) {
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
-      <div style={{ textAlign: 'center', marginBottom: 48 }}>
-        <h1 style={{ fontSize: 38, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.1, marginBottom: 16 }}>
+      <div style={{ textAlign: 'center', marginBottom: 56 }}>
+        <div style={{
+          display: 'inline-block', padding: '6px 14px', borderRadius: 9999,
+          background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)',
+          fontSize: 11, fontWeight: 600, color: '#00d4ff',
+          textTransform: 'uppercase', letterSpacing: '0.1em',
+          marginBottom: 18,
+        }}>
+          Curso Interativo IconsAI
+        </div>
+        <h1
+          className="hero-title-gradient"
+          style={{
+            fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+            fontSize: 48, fontWeight: 800, lineHeight: 1.05, marginBottom: 18, letterSpacing: '-0.025em',
+          }}
+        >
           Em qual setor voce trabalha?
         </h1>
-        <p style={{ fontSize: 16, color: '#94a3b8', maxWidth: 640, margin: '0 auto', lineHeight: 1.6 }}>
-          As Normas Regulamentadoras se aplicam de forma diferente a cada setor. Escolha o seu pra
-          ver as NRs mais relevantes pro seu dia-a-dia, com exemplos e cenarios do seu chao de fabrica.
+        <p style={{ fontSize: 16, color: '#94a3b8', maxWidth: 640, margin: '0 auto', lineHeight: 1.65 }}>
+          As Normas Regulamentadoras se aplicam de forma diferente a cada setor.
+          Escolha o seu pra ver as NRs mais relevantes do seu dia-a-dia, com exemplos
+          e cenarios do seu chao de fabrica.
         </p>
       </div>
 

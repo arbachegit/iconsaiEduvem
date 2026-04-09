@@ -1,3 +1,8 @@
+/* ============================================================
+   iconsaiEduven — globals.css
+   Herda do design system canonico do iconsaiStats.
+   ============================================================ */
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 body {
@@ -6,6 +11,8 @@ body {
   font-family: 'Inter', -apple-system, system-ui, sans-serif;
   overflow-x: hidden;
   min-height: 100vh;
+  /* Compensa o header fixed (64px) */
+  padding-top: 64px;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -13,17 +20,45 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.5); }
 
+/* ─── Animations ───────────────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes spin { to { transform: rotate(360deg); } }
-.fadeIn { animation: fadeIn 0.3s ease-out; }
-.slideUp { animation: slideUp 0.3s ease-out; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes beacon {
+  0%, 100% { filter: drop-shadow(0 0 2px currentColor); opacity: 1; }
+  50% { filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 16px currentColor); opacity: 0.85; }
+}
+@keyframes shine {
+  0% { transform: translateX(-100%) }
+  100% { transform: translateX(200%) }
+}
+
+.fadeIn { animation: fadeIn 0.4s ease-out; }
+.slideUp { animation: slideUp 0.4s ease-out; }
 .spin { animation: spin 1s linear infinite; display: inline-block; }
+.pulse { animation: pulse 2s ease-in-out infinite; }
 
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; }
 
-/* Floating Logo — Regra de Ouro IconsAI */
+/* ─── Cards utility ────────────────────────────────────────── */
+.card-hover {
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+/* ─── Floating Logo (Regra de Ouro IconsAI) ────────────────── */
 .floating-logo {
   position: fixed; bottom: 24px; right: 24px; z-index: 900;
   width: 48px; height: 48px; border-radius: 50%;
@@ -44,10 +79,32 @@ button { font-family: inherit; }
   .floating-logo { animation: none !important; transition: none !important; }
 }
 
-/* Cards utility */
-.card-hover {
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+/* ─── Hero gradient text (titulo principal) ────────────────── */
+.hero-title-gradient {
+  background: linear-gradient(135deg, #e2e8f0 0%, #00d4ff 50%, #0a84ff 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 6s linear infinite;
 }
-.card-hover:hover {
-  transform: translateY(-2px);
+
+.hero-nr-gradient {
+  background: linear-gradient(135deg, #00d4ff, #0a84ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Skeleton loader (durante geração de aula) ────────────── */
+.skeleton {
+  background: linear-gradient(90deg, rgba(100,116,139,0.08) 0%, rgba(100,116,139,0.18) 50%, rgba(100,116,139,0.08) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+  border-radius: 8px;
+}
+
+/* ─── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  body { padding-top: 60px; }
 }
