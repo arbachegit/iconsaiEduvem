@@ -114,15 +114,26 @@ function splitGiantChunk(chunk: ParsedChunk): ParsedChunk[] {
   return out
 }
 
+function normalizeWhitespace(s: string): string {
+  return s.replace(/\s+/g, ' ').trim()
+}
+
 export function parseNRText(text: string): ParsedChunk[] {
   const nodes = parseRaw(text)
   const chunks: ParsedChunk[] = []
 
   for (const node of nodes) {
-    const content = node.body.join(' ').trim()
+    // Skip pure structural headings (heading line with no body content).
+    // The title is still preserved as breadcrumb of child chunks.
+    if (node.body.length === 0) continue
+
+    // Title IS part of the content — it carries the most informative phrase
+    // (e.g. "Esta Norma estabelece os requisitos..."). pdf-parse splits the
+    // first line of an item into 'title' and the rest into 'body', so we
+    // re-join them here.
+    const rawContent = `${node.title} ${node.body.join(' ')}`
+    const content = normalizeWhitespace(rawContent)
     const tok = tokenize(content)
-    // Skip pure headings (no body) — their title is preserved in breadcrumb of children
-    if (tok < MIN_TOKENS && content.length === 0) continue
 
     const breadcrumb = buildBreadcrumb(node.chapter, nodes)
     const baseChunk: ParsedChunk = {
