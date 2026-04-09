@@ -189,3 +189,39 @@ button { font-family: inherit; }
 .nrA-knife          { animation: nrBob 1.4s ease-in-out infinite; transform-origin: 20px 8px; transform-box: fill-box; }
 .nrA-flame-top      { animation: nrFlameSlow 0.9s ease-in-out infinite; transform-origin: 20px 10px; transform-box: fill-box; }
 .nrA-door           { animation: nrFadeFast 1.8s ease-in-out infinite; }
+
+/* ════════════════════════════════════════════════════════════
+   NR CARD container — shimmer sweep + hover lift + code glow
+   ════════════════════════════════════════════════════════════ */
+
+.nr-card {
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.nr-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--nr-color);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.45),
+              0 0 0 1px var(--nr-color),
+              0 0 28px var(--nr-color)55;
+}
+
+@keyframes nr-card-shimmer {
+  0%   { background-position: -100% 0; opacity: 0; }
+  15%  { opacity: 1; }
+  50%  { background-position: 100% 0; opacity: 1; }
+  65%  { opacity: 0; }
+  100% { background-position: 100% 0; opacity: 0; }
+}
+.nr-card .nr-shimmer {
+  animation: nr-card-shimmer 6s ease-in-out infinite;
+  animation-delay: var(--nr-delay);
+}
+
+@keyframes nr-card-code-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 16px var(--nr-color)44; }
+}
+.nr-card .nr-code {
+  animation: nr-card-code-pulse 4s ease-in-out infinite;
+  animation-delay: var(--nr-delay);
+}
