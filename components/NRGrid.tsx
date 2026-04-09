@@ -100,39 +100,114 @@ function Section({ title, subtitle, color, nrs, onOpen }: {
         gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
         gap: 14,
       }}>
-        {nrs.map(nr => (
-          <button
-            key={nr.id}
-            onClick={() => onOpen(nr)}
-            className="card-hover"
-            style={{
-              display: 'block', textAlign: 'left',
-              background: '#0c1320',
-              border: '1px solid rgba(100,116,139,0.2)',
-              borderRadius: 12,
-              padding: '18px 20px',
-              cursor: 'pointer', fontFamily: 'inherit',
-              width: '100%',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color, fontFamily: "'JetBrains Mono', monospace" }}>
-                {nr.code}
-              </span>
-              <RelevanceBadge relevance={nr.relevance} />
-            </div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', lineHeight: 1.4, marginBottom: 8 }}>
-              {nr.title}
-            </h3>
-            {nr.rationale && (
-              <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, fontStyle: 'italic' }}>
-                {nr.rationale}
-              </p>
-            )}
-          </button>
+        {nrs.map((nr, idx) => (
+          <NRCard key={nr.id} nr={nr} color={color} onOpen={onOpen} delay={idx * 0.15} />
         ))}
       </div>
     </div>
+  )
+}
+
+function NRCard({ nr, color, onOpen, delay }: {
+  nr: NRWithRelevance
+  color: string
+  onOpen: (nr: NRWithRelevance) => void
+  delay: number
+}) {
+  // Cor mais intensa para criticas (relevance >= 4)
+  const isHighlight = nr.relevance >= 4
+  return (
+    <button
+      onClick={() => onOpen(nr)}
+      className="nr-card"
+      style={{
+        position: 'relative', overflow: 'hidden',
+        display: 'block', textAlign: 'left',
+        background: '#0c1320',
+        border: `1px solid ${color}33`,
+        borderRadius: 12,
+        padding: '18px 20px',
+        cursor: 'pointer', fontFamily: 'inherit',
+        width: '100%',
+        // CSS variables consumidas pelas classes .nr-card
+        ['--nr-color' as never]: color,
+        ['--nr-delay' as never]: `${delay}s`,
+      }}
+    >
+      {/* Shimmer line animation — passa por cima do card a cada ciclo */}
+      <span className="nr-shimmer" aria-hidden style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: `linear-gradient(115deg, transparent 40%, ${color}1F 50%, transparent 60%)`,
+        backgroundSize: '250% 100%',
+      }} />
+
+      {/* Glow border pulsante — so para criticas (>=4) */}
+      {isHighlight && (
+        <span className="nr-glow" aria-hidden style={{
+          position: 'absolute', inset: -1, borderRadius: 12, pointerEvents: 'none',
+          boxShadow: `0 0 0 1px ${color}66, 0 0 16px ${color}33`,
+        }} />
+      )}
+
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span
+          className="nr-code"
+          style={{
+            fontSize: 14, fontWeight: 700, color,
+            fontFamily: "'JetBrains Mono', monospace",
+            textShadow: `0 0 10px ${color}66`,
+          }}
+        >
+          {nr.code}
+        </span>
+        <RelevanceBadge relevance={nr.relevance} />
+      </div>
+      <h3 style={{ position: 'relative', fontSize: 14, fontWeight: 600, color: '#e2e8f0', lineHeight: 1.4, marginBottom: 8 }}>
+        {nr.title}
+      </h3>
+      {nr.rationale && (
+        <p style={{ position: 'relative', fontSize: 12, color: '#94a3b8', lineHeight: 1.5, fontStyle: 'italic' }}>
+          {nr.rationale}
+        </p>
+      )}
+
+      <style>{`
+        .nr-card {
+          transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .nr-card:hover {
+          transform: translateY(-3px);
+          border-color: var(--nr-color);
+          box-shadow: 0 8px 28px rgba(0,0,0,0.4), 0 0 0 1px var(--nr-color);
+        }
+        @keyframes nr-shimmer-anim {
+          0%, 100% { background-position: -100% 0; opacity: 0; }
+          15% { opacity: 1; }
+          50% { background-position: 100% 0; opacity: 1; }
+          65% { opacity: 0; }
+        }
+        .nr-shimmer {
+          animation: nr-shimmer-anim 5s ease-in-out infinite;
+          animation-delay: var(--nr-delay);
+        }
+        @keyframes nr-glow-pulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
+        }
+        .nr-glow {
+          animation: nr-glow-pulse 3.5s ease-in-out infinite;
+          animation-delay: var(--nr-delay);
+        }
+        @keyframes nr-code-pulse {
+          0%, 100% { text-shadow: 0 0 6px var(--nr-color); }
+          50% { text-shadow: 0 0 16px var(--nr-color), 0 0 24px var(--nr-color); }
+        }
+        .nr-card .nr-code {
+          animation: nr-code-pulse 4s ease-in-out infinite;
+          animation-delay: var(--nr-delay);
+        }
+      `}</style>
+    </button>
   )
 }
 
