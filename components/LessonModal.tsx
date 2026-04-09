@@ -67,6 +67,7 @@ export default function LessonModal({
 
   const [title, setTitle] = useState('')
   const [sections, setSections] = useState<LessonSection[]>([])
+  const [lessonId, setLessonId] = useState(0)
   const [stage1Loading, setStage1Loading] = useState(false)
   const [restLoading, setRestLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -125,6 +126,7 @@ export default function LessonModal({
 
       setTitle(fastJson.title)
       setSections([fastJson.section1])
+      setLessonId(fastJson.lessonId)
       setStage1Loading(false)
 
       // STAGE 2
@@ -355,6 +357,7 @@ export default function LessonModal({
           {sections.length > 0 && (
             <>
               <LessonView
+                lessonId={lessonId}
                 nrCode={nrCode}
                 nrTitle={nrTitle}
                 sectorSlug={sectorSlug}

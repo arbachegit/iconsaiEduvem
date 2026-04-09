@@ -1,7 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useCallback } from 'react'
+import { LessonNavigation } from './education/LessonNavigation'
+import { SvgComprehensionCheck } from './education/SvgComprehensionCheck'
+import { TermModal, useTermModalStack } from './education/TermModal'
 import { getSectorMeta } from '@/lib/sectors-meta'
+import { NR_CONCEPTUAL_TERMS } from '@/data/domain-configs/nr'
 import AudioPlayer from './AudioPlayer'
 
 export interface LessonSection {
@@ -11,6 +15,7 @@ export interface LessonSection {
 }
 
 interface LessonViewProps {
+  lessonId: number
   nrCode: string
   nrTitle: string
   sectorSlug: string
@@ -20,200 +25,254 @@ interface LessonViewProps {
   restLoading?: boolean
 }
 
-const SECTION_TITLES: Record<number, string> = {
-  1: 'Por que isso importa?',
-  2: 'Entendendo na pratica',
-  3: 'Passo a passo',
-  4: 'Exemplo com dados reais',
-  5: 'Pontos fortes',
-  6: 'Desafio Pratico',
-}
-
 export default function LessonView({
-  nrCode, nrTitle, sectorSlug, sectorName, title, sections, restLoading = false,
+  lessonId, nrCode, nrTitle, sectorSlug, sectorName, title, sections, restLoading = false,
 }: LessonViewProps) {
-  const [current, setCurrent] = useState(1)
+  const [currentSection, setCurrentSection] = useState(1)
+  const [comprehensionFeedback, setComprehensionFeedback] = useState<Record<number, boolean | undefined>>({})
+  const [recapText, setRecapText] = useState<Record<number, string>>({})
+  const [recapLoading, setRecapLoading] = useState<number | null>(null)
+
   const meta = getSectorMeta(sectorSlug)
-  const accentColor = meta?.color || '#00d4ff'
-  const accentSoft = meta?.colorSoft || 'rgba(0,212,255,0.1)'
+  const accent = meta?.color || '#22d3ee'
 
-  const active = sections.find(s => s.index === current)
-  const isPending = !active && restLoading && current > 1
+  const active = sections.find(s => s.index === currentSection)
 
-  // Quando rest termina e o aluno esta numa secao que acabou de chegar, scroll top
-  useEffect(() => {
-    if (active) window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [current, active])
+  // Stacked term modals
+  const termModals = useTermModalStack({
+    lessonTopic: 'nr',
+    lessonContext: active?.content?.slice(0, 300) || '',
+    lessonId,
+    sectionIndex: currentSection,
+    nrCode,
+    sectorSlug,
+  })
+
+  const handleComprehension = useCallback(async (sectionIndex: number, understood: boolean) => {
+    setComprehensionFeedback(prev => ({ ...prev, [sectionIndex]: understood }))
+
+    fetch('/api/eduven/comprehension', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lesson_id: lessonId, section_index: sectionIndex, understood }),
+    }).catch(() => {})
+
+    if (!understood) {
+      const section = sections.find(s => s.index === sectionIndex)
+      if (!section) return
+      setRecapLoading(sectionIndex)
+      try {
+        const res = await fetch('/api/eduven/comprehension', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lesson_id: lessonId,
+            section_index: sectionIndex,
+            understood: false,
+            section_title: section.titlePt,
+            section_content: section.content,
+          }),
+        })
+        const data = await res.json()
+        if (data.recap) {
+          setRecapText(prev => ({ ...prev, [sectionIndex]: data.recap }))
+        }
+      } catch { /* ignore */ }
+      setRecapLoading(null)
+    }
+  }, [lessonId, sections])
 
   return (
-    <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-      {/* Sidebar com 6 secoes */}
-      <nav style={{
-        width: 220, flexShrink: 0, position: 'sticky', top: 24,
-        background: '#0c1320', borderRadius: 12, padding: 8,
-        border: '1px solid rgba(100,116,139,0.2)',
+    <div style={{ display: 'flex', gap: 24, maxWidth: 1200, margin: '0 auto', padding: '24px 16px' }}>
+      {/* Sidebar */}
+      <div style={{
+        width: 240, flexShrink: 0, position: 'sticky', top: 24, alignSelf: 'flex-start',
+        background: '#0c1320', borderRadius: 12, padding: 8, border: '1px solid #1e293b',
       }}>
-        <div style={{ padding: '10px 12px 14px', fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
-          Aula em 6 secoes
+        <div style={{ padding: '12px 14px', fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+          {nrCode} / {sectorName}
         </div>
-        {[1, 2, 3, 4, 5, 6].map(idx => {
-          const isActive = idx === current
-          const isAvailable = sections.some(s => s.index === idx)
-          const isLoading = !isAvailable && restLoading && idx > 1
-          return (
-            <button
-              key={idx}
-              onClick={() => setCurrent(idx)}
-              disabled={!isAvailable && !isLoading}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                padding: '11px 14px', borderRadius: 8,
-                background: isActive ? accentSoft : 'transparent',
-                border: isActive ? `1px solid ${meta?.borderColor || accentColor}` : '1px solid transparent',
-                color: isActive ? accentColor : isAvailable ? '#94a3b8' : '#475569',
-                textAlign: 'left',
-                cursor: !isAvailable && !isLoading ? 'not-allowed' : 'pointer',
-                marginBottom: 4,
-                opacity: isAvailable ? 1 : 0.6,
-                transition: 'all 0.15s',
-              }}
-            >
-              <span style={{
-                width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                background: isActive ? accentColor : 'rgba(100,116,139,0.15)',
-                color: isActive ? '#050d1a' : isAvailable ? '#94a3b8' : '#475569',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 700,
-                position: 'relative',
-              }}>
-                {isLoading ? <span className="spin" style={{ fontSize: 10 }}>⟳</span> : idx}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
-                {SECTION_TITLES[idx]}
-              </span>
-            </button>
-          )
-        })}
-      </nav>
+        <LessonNavigation
+          currentSection={currentSection}
+          comprehensionFeedback={comprehensionFeedback}
+          onNavigate={setCurrentSection}
+          accentColor={accent}
+        />
+      </div>
 
-      {/* Content */}
+      {/* Main */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        {!active && isPending && (
+        {!active && restLoading && (
           <div style={{
-            background: '#0c1320', border: `1px solid ${accentColor}33`,
-            borderRadius: 12, padding: '40px 32px', textAlign: 'center',
+            background: '#0c1320', border: '1px solid #1e293b', borderRadius: 12,
+            padding: '40px 32px', textAlign: 'center', color: accent,
           }}>
-            <div className="spin" style={{ display: 'inline-block', fontSize: 28, color: accentColor, marginBottom: 14 }}>⟳</div>
-            <div style={{ color: accentColor, fontSize: 13, fontWeight: 700 }}>
-              Esta secao ainda esta sendo gerada...
-            </div>
-            <div style={{ color: '#64748b', fontSize: 12, marginTop: 8 }}>
-              Pode continuar lendo a anterior. Volta aqui em alguns segundos.
-            </div>
+            Gerando esta secao... pode continuar lendo a anterior.
           </div>
         )}
-
-        {!active && !isPending && (
+        {!active && !restLoading && (
           <div style={{
-            background: '#0c1320', border: '1px solid rgba(100,116,139,0.2)',
-            borderRadius: 12, padding: '40px 32px', textAlign: 'center', color: '#94a3b8',
+            background: '#0c1320', border: '1px solid #1e293b', borderRadius: 12,
+            padding: '40px 32px', textAlign: 'center', color: '#94a3b8',
           }}>
             Secao indisponivel.
           </div>
         )}
-
         {active && (
-          <article
-            key={active.index}
-            className="fadeIn"
-            style={{
-              background: '#0c1320',
-              border: '1px solid rgba(100,116,139,0.2)',
-              borderRadius: 12, padding: '28px 32px',
-              fontSize: 15, lineHeight: 1.8, color: '#cbd5e1',
-            }}
-          >
+          <div key={active.index}>
+            {/* Header da secao com AudioPlayer */}
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18,
-              paddingBottom: 14, borderBottom: '1px solid rgba(100,116,139,0.15)',
-              flexWrap: 'wrap',
+              display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12,
+              padding: '0 4px',
             }}>
               <span style={{
-                fontSize: 11, color: accentColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1,
+                fontSize: 11, fontWeight: 700, color: accent,
+                textTransform: 'uppercase', letterSpacing: 1,
               }}>
                 Secao {active.index} de 6
               </span>
               <div style={{ flex: 1 }} />
-              <AudioPlayer text={active.content} color={accentColor} />
+              <AudioPlayer text={active.content} color={accent} />
             </div>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e2e8f0', marginBottom: 18, lineHeight: 1.3 }}>
-              {active.titlePt}
-            </h2>
-            <div dangerouslySetInnerHTML={{ __html: renderMarkdown(active.content, accentColor) }} />
+
+            {/* Content with clickable terms */}
+            <div
+              onClick={(e) => {
+                const target = e.target as HTMLElement
+                if (target.dataset.termLink) termModals.openTerm(target.dataset.termLink)
+              }}
+              style={{
+                background: '#0c1320', borderRadius: 12, padding: '28px 32px',
+                border: '1px solid #1e293b', fontSize: 15, lineHeight: 1.8, color: '#cbd5e1',
+              }}
+              dangerouslySetInnerHTML={{ __html: renderMarkdownWithTerms(active.content, accent) }}
+            />
+
+            {/* Comprehension check (sempre, exceto secao 6) */}
+            {active.index < 6 && (
+              <SvgComprehensionCheck
+                onFeedback={(understood) => handleComprehension(active.index, understood)}
+                disabled={comprehensionFeedback[active.index] !== undefined}
+              />
+            )}
+
+            {/* Recap */}
+            {recapLoading === active.index && (
+              <div style={{
+                background: '#0c1320', border: '1px solid #f59e0b', borderRadius: 12,
+                padding: 24, marginTop: 16, color: '#fbbf24', fontSize: 14,
+              }}>
+                Gerando recapitulacao...
+              </div>
+            )}
+            {recapText[active.index] && (
+              <div style={{
+                background: '#0c1320', border: '1px solid #f59e0b', borderRadius: 12,
+                padding: 24, marginTop: 16,
+              }}>
+                <div style={{
+                  fontSize: 13, color: '#f59e0b', fontWeight: 700, marginBottom: 12,
+                  textTransform: 'uppercase', letterSpacing: 1,
+                }}>
+                  Recapitulacao — vamos de outro angulo
+                </div>
+                <div
+                  style={{ fontSize: 15, lineHeight: 1.8, color: '#cbd5e1' }}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdownWithTerms(recapText[active.index], accent) }}
+                />
+              </div>
+            )}
 
             {/* Nav buttons */}
             <div style={{
-              display: 'flex', justifyContent: 'space-between', marginTop: 28,
-              paddingTop: 18, borderTop: '1px solid rgba(100,116,139,0.15)',
+              display: 'flex', justifyContent: 'space-between', marginTop: 24,
             }}>
-              <button
-                onClick={() => setCurrent(c => Math.max(1, c - 1))}
-                disabled={current === 1}
-                style={{
-                  padding: '9px 18px', borderRadius: 8,
-                  background: 'transparent', border: '1px solid rgba(100,116,139,0.3)',
-                  color: current === 1 ? '#475569' : '#94a3b8',
-                  fontSize: 13, fontWeight: 600,
-                  cursor: current === 1 ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                ← Anterior
-              </button>
-              <button
-                onClick={() => setCurrent(c => Math.min(6, c + 1))}
-                disabled={current === 6 || (!sections.some(s => s.index === current + 1) && !restLoading)}
-                style={{
-                  padding: '9px 18px', borderRadius: 8,
-                  background: current === 6 ? 'transparent' : accentColor,
-                  border: current === 6 ? '1px solid rgba(100,116,139,0.3)' : 'none',
-                  color: current === 6 ? '#475569' : '#050d1a',
-                  fontSize: 13, fontWeight: 700,
-                  cursor: current === 6 ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                Proxima secao →
-              </button>
+              {currentSection > 1 && (
+                <button
+                  onClick={() => setCurrentSection(currentSection - 1)}
+                  style={{
+                    padding: '10px 24px', borderRadius: 8, border: '1px solid #1e293b',
+                    background: 'transparent', color: '#94a3b8', fontSize: 14, cursor: 'pointer',
+                    fontWeight: 600, fontFamily: 'inherit',
+                  }}
+                >
+                  Anterior
+                </button>
+              )}
+              <div style={{ flex: 1 }} />
+              {currentSection < 6 && sections.some(s => s.index === currentSection + 1) && (
+                <button
+                  onClick={() => setCurrentSection(currentSection + 1)}
+                  style={{
+                    padding: '10px 24px', borderRadius: 8, border: 'none',
+                    background: accent, color: '#0a0e17', fontSize: 14, cursor: 'pointer',
+                    fontWeight: 700, fontFamily: 'inherit',
+                  }}
+                >
+                  Proxima secao
+                </button>
+              )}
             </div>
-          </article>
+          </div>
         )}
       </div>
+
+      {/* Term loading indicator */}
+      {termModals.loading && (
+        <div style={{
+          position: 'fixed', bottom: 20, right: 20, zIndex: 1250,
+          background: '#0c1320', border: `1px solid ${accent}`, borderRadius: 8,
+          padding: '8px 16px', fontSize: 12, color: accent,
+        }}>
+          Carregando conceito...
+        </div>
+      )}
+
+      {/* Stacked term modals */}
+      {termModals.stack.map((content, i) => (
+        <TermModal
+          key={`${content.term}-${i}`}
+          content={content}
+          stackLevel={i}
+          onClose={termModals.closeTop}
+          onTermClick={termModals.openTerm}
+        />
+      ))}
     </div>
   )
 }
 
-/**
- * Markdown minimal → HTML, com badges nas citacoes [NR-X, item Y.Z].
- */
-function renderMarkdown(md: string, accentColor: string): string {
+/** Markdown to HTML with clickable terms (NR_CONCEPTUAL_TERMS) and citation badges */
+function renderMarkdownWithTerms(md: string, accentColor: string): string {
   let html = md
+    // Citacoes [NR-X, item Y.Z] viram badges
     .replace(/\[(NR-\d+,[^\]]+)\]/g, `<span style="display:inline-block;padding:1px 8px;margin:0 2px;border-radius:4px;background:${accentColor}1A;color:${accentColor};font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;border:1px solid ${accentColor}33">$1</span>`)
-    .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre style="background:#050d1a;padding:14px;border-radius:8px;overflow-x:auto;border:1px solid rgba(100,116,139,0.2);margin:14px 0"><code style="color:#4ade80;font-family:\'JetBrains Mono\',monospace;font-size:13px;line-height:1.6">$2</code></pre>')
-    .replace(/`([^`]+)`/g, '<code style="background:rgba(100,116,139,0.15);padding:2px 6px;border-radius:4px;color:#22d3ee;font-size:13px;font-family:\'JetBrains Mono\',monospace">$1</code>')
+    // Code blocks
+    .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre style="background:#080c14;padding:14px;border-radius:8px;overflow-x:auto;border:1px solid #1e293b;margin:14px 0"><code style="color:#4ade80;font-family:\'JetBrains Mono\',monospace;font-size:13px;line-height:1.6">$2</code></pre>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#22d3ee;font-size:13px;font-family:\'JetBrains Mono\',monospace">$1</code>')
+    // Bold + italic
     .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#e2e8f0;font-weight:700">$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em style="color:#94a3b8;font-style:italic">$1</em>')
+    // Headings
     .replace(/^### (.+)$/gm, '<h3 style="color:#e2e8f0;font-size:17px;font-weight:600;margin:24px 0 10px">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 style="color:#e2e8f0;font-size:20px;font-weight:700;margin:28px 0 14px">$1</h2>')
+    // Lists
     .replace(/^[\-\*] (.+)$/gm, '<li style="margin:6px 0">$1</li>')
     .replace(/^(\d+)\. (.+)$/gm, '<li style="margin:6px 0;list-style-type:decimal">$2</li>')
 
   html = html.replace(/(<li[^>]*>[\s\S]*?<\/li>(?:\s*<li[^>]*>[\s\S]*?<\/li>)*)/g, '<ul style="padding-left:24px;margin:12px 0">$1</ul>')
+  html = html.split(/\n{2,}/).map(p => p.trim().startsWith('<') ? p : `<p style="margin:14px 0">${p}</p>`).join('\n')
 
-  html = html
-    .split(/\n{2,}/)
-    .map(p => p.trim().startsWith('<') ? p : `<p style="margin:14px 0">${p}</p>`)
-    .join('\n')
+  // Clickable terms (NR_CONCEPTUAL_TERMS) — sorted by length desc para casar termos compostos primeiro
+  const sorted = [...NR_CONCEPTUAL_TERMS].sort((a, b) => b.length - a.length)
+  for (const term of sorted) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`(?<!data-term-link=")(?<![\\w])${escaped}(?![\\w])`, 'gi')
+    html = html.replace(regex, (match) =>
+      `<span data-term-link="${match}" style="color:${accentColor};cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;font-weight:600">${match}</span>`
+    )
+  }
 
   return html
 }
