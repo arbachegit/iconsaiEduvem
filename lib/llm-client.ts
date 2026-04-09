@@ -38,7 +38,7 @@ function getOpenAI(): OpenAI {
 const CB_THRESHOLD = 3
 const CB_WINDOW_MS = 60_000
 const CB_OPEN_DURATION_MS = 5 * 60_000
-const ANTHROPIC_TIMEOUT_MS = 60_000
+const ANTHROPIC_TIMEOUT_MS = 120_000   // 120s — Sonnet 4.5 com prompt longo as vezes passa de 60s
 
 let cbFailures: number[] = []
 let cbOpenUntil = 0

@@ -77,6 +77,9 @@ export default function LessonModal({
   // Generation guard — invalida respostas antigas em troca de difficulty
   const generationRef = useRef(0)
 
+  // StrictMode dedupe — previne useEffect rodando 2x em dev
+  const lastBootKeyRef = useRef<string>('')
+
   // PhD easter egg
   const phdClickRef = useRef<{ key: Difficulty | null; count: number; lastTs: number }>({
     key: null, count: 0, lastTs: 0,
@@ -150,12 +153,16 @@ export default function LessonModal({
     }
   }, [nrId, sectorSlug, currentDifficulty])
 
-  // Boot inicial + qualquer mudanca de difficulty regenera
+  // Boot inicial + qualquer mudanca de difficulty regenera.
+  // StrictMode dedupe: ignora 2a invocacao com mesma key (dev only).
   useEffect(() => {
+    const bootKey = `${nrId}-${sectorSlug}-${currentDifficulty}`
+    if (lastBootKeyRef.current === bootKey) return
+    lastBootKeyRef.current = bootKey
     generationRef.current += 1
     const genId = generationRef.current
     generate(genId)
-  }, [generate])
+  }, [generate, nrId, sectorSlug, currentDifficulty])
 
   // ── Difficulty handler com easter egg PhD ────────────────
   const handleDifficultyClick = (key: Difficulty) => {
