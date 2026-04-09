@@ -33,9 +33,14 @@ interface Props {
   simulation: NRSimulationConfig | null;
   isLoading: boolean;
   elapsed: number;
+  /** True quando esta NR NAO tem simulacao registrada em lib/nr-simulations.ts.
+   *  Mostra mensagem honesta 'laboratorio em breve' em vez de loading forever. */
+  simulationNotAvailable?: boolean;
 }
 
-export default function LabBanner({ laboratoryRef, simulation, isLoading, elapsed }: Props) {
+export default function LabBanner({
+  laboratoryRef, simulation, isLoading, elapsed, simulationNotAvailable = false,
+}: Props) {
   const [msgIdx, setMsgIdx] = useState(0);
   const justArrivedRef = useRef(false);
   const [glow, setGlow] = useState(false);
@@ -105,13 +110,13 @@ export default function LabBanner({ laboratoryRef, simulation, isLoading, elapse
                   {simulation.subtitle || 'Mexa nos parâmetros. Toda mexida ensina algo.'}
                 </div>
               </>
-            ) : ready ? (
+            ) : simulationNotAvailable ? (
               <>
                 <div style={{ color: '#e2e8f0', fontSize: 17, fontWeight: 700, marginTop: 2 }}>
-                  Mexa nos parâmetros. Toda mexida ensina algo.
+                  Laboratório desta NR está em desenvolvimento.
                 </div>
                 <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
-                  Não precisa entender tudo de primeira. Arrasta os sliders, olha o gráfico, lê o que o ai.tutor responde no painel ao lado. É aqui que a teoria vira intuição.
+                  A primeira simulação pronta é a da <strong style={{ color: '#22d3ee' }}>NR-06 EPI</strong>. Abra-a pra ver o trabalhador ganhando proteção em tempo real, com ai.tutor explicando cada passo. Mais simulações vêm em breve.
                 </div>
               </>
             ) : (

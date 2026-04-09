@@ -109,6 +109,7 @@ export default function LessonView({
         simulation={simulation}
         isLoading={restLoading}
         elapsed={generationElapsed}
+        simulationNotAvailable={!registeredSim && !restLoading}
       />
 
       {/* ═══ Sidebar + conteudo ═══ */}
