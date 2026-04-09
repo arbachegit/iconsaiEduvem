@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { X, Sparkles, Sprout, Mountain, Flame, Skull, FlaskConical } from 'lucide-react'
+import { X, Sparkles, Sprout, Mountain, Flame, Skull } from 'lucide-react'
 import LessonView, { type LessonSection } from './LessonView'
 import SimulationLab from './SimulationLab'
 import { getSectorMeta } from '@/lib/sectors-meta'
-import { hasSimulation } from '@/lib/nr-simulations'
 
 /* ═══════════════════════════════════════════════════════════
    LessonModal — modal horizontal canonico (padrao stats)
@@ -19,16 +18,18 @@ import { hasSimulation } from '@/lib/nr-simulations'
 
 type Difficulty = 'easier' | 'same' | 'harder' | 'phd'
 
+// Verbos canonicos iconsaiStats, com "dados brasileiros" trocado por "exemplos do setor"
+// (adaptacao legitima — eduven e sector-aware).
 const THINKING_VERBS_STAGE1 = [
-  'Pensando', 'Lendo a norma', 'Iluminando ideias', 'Aquecendo o quadro',
-  'Garimpando exemplos do setor', 'Conectando conceitos',
-  'Considerando o caso do trabalhador', 'Tecendo a abertura',
+  'Pensando', 'Refletindo', 'Iluminando ideias', 'Aquecendo o quadro',
+  'Garimpando exemplos do setor', 'Conectando conceitos', 'Cavilando',
+  'Considerando', 'Tecendo a abertura',
 ]
 
 const THINKING_VERBS_STAGE2 = [
-  'Costurando os exemplos', 'Cozinhando a aula', 'Provando os numeros',
-  'Ajustando o passo a passo', 'Garimpando casos reais',
-  'Refinando a explicacao', 'Calibrando o tom',
+  'Costurando os exemplos', 'Cozinhando a aula', 'Provando os números',
+  'Ajustando o passo a passo', 'Tirando o pó do gráfico', 'Modelando',
+  'Garimpando casos reais', 'Refinando passo a passo', 'Calibrando',
 ]
 
 const DIFFICULTY_OPTIONS: Array<{
@@ -297,27 +298,8 @@ export default function LessonModal({
             )}
           </div>
 
-          {/* Laboratorio button — sempre aparece, scroll para o lab no fim do modal */}
-          {!isLoading && (
-            <button
-              onClick={() => {
-                document.getElementById('eduven-lab-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
-              title={hasSimulation(nrId) ? 'Ir para o laboratorio interativo' : 'Laboratorio (em desenvolvimento)'}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '6px 12px', borderRadius: 9999,
-                border: `1px solid ${accent}88`,
-                background: `${accent}1A`,
-                color: accent, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                fontFamily: 'inherit',
-                boxShadow: hasSimulation(nrId) ? `0 0 12px ${accent}44` : 'none',
-              }}
-            >
-              <FlaskConical size={14} />
-              Laboratorio
-            </button>
-          )}
+          {/* Canon: unica chamada do laboratorio e o LabCallout/LabBanner no topo do body.
+              Nao renderizar botao Laboratorio no header. */}
 
           {/* Fechar */}
           <button

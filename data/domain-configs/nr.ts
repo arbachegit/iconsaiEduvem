@@ -8,13 +8,14 @@
  *   4. 6 secoes canonicas geradas em 2 estagios (fast: secao 1, rest: 2-6)
  */
 
+// Titulos canonicos (igual iconsaiStats). NAO variar. Secao 4 eh SO "Exemplo" — nao inventar variantes.
 export const LESSON_SECTIONS = [
-  { index: 1, slug: 'motivation',  titlePt: 'Por que isso importa?',           hasExercise: false },
-  { index: 2, slug: 'analogies',   titlePt: 'Entendendo na pratica',           hasExercise: false },
-  { index: 3, slug: 'methodology', titlePt: 'Passo a passo',                   hasExercise: false },
-  { index: 4, slug: 'exercise',    titlePt: 'Exemplo com dados reais',         hasExercise: true  },
-  { index: 5, slug: 'highlights',  titlePt: 'Pontos fortes',                   hasExercise: false },
-  { index: 6, slug: 'challenge',   titlePt: 'Desafio Pratico',                 hasExercise: true  },
+  { index: 1, slug: 'motivation',  titlePt: 'Por que isso importa?', hasExercise: false },
+  { index: 2, slug: 'analogies',   titlePt: 'Entendendo na prática', hasExercise: false },
+  { index: 3, slug: 'methodology', titlePt: 'Passo a passo',         hasExercise: false },
+  { index: 4, slug: 'example',     titlePt: 'Exemplo',               hasExercise: true  },
+  { index: 5, slug: 'highlights',  titlePt: 'Pontos fortes',         hasExercise: false },
+  { index: 6, slug: 'challenge',   titlePt: 'Desafio Prático',       hasExercise: true  },
 ] as const
 
 /**
@@ -181,30 +182,30 @@ A Secao 1 ("Por que isso importa?") ja foi gerada. Sua tarefa AGORA e gerar as S
 
 # REGRAS POR SECAO
 
-**Secao 2 — "Entendendo na pratica"** (ate 150 palavras, 1+ citacao)
+**Secao 2 — "Entendendo na prática"** (ate 150 palavras, 1+ citacao)
 Explique o conceito central com analogia concreta do dia-a-dia do setor de **${sector.name}**. NAO recite a norma — traduza pra portugues humano. Use o "vamos olhar isso juntos".
 
 **Secao 3 — "Passo a passo"** (4-7 passos numerados, 2+ citacoes)
 Procedimento operacional. Cada passo e uma acao verbal ("Verifique X", "Documente Y", "Pergunte ao supervisor Z"). Concreto, acionavel.
 
-**Secao 4 — "Exemplo com dados reais"** (ate 200 palavras, 2+ citacoes)
+**Secao 4 — "Exemplo"** (ate 200 palavras, 2+ citacoes)
 Cenario concreto dentro do setor de **${sector.name}**: empresa ficticia plausivel, situacao especifica, decisao do auditor, consequencia. Use dialogo se ajudar. Termine com o resultado real (multa, embargo, ou aprovacao).
 
 **Secao 5 — "Pontos fortes"** (3 pontos numerados, 1+ citacao por ponto)
 3 coisas que essa NR faz BEM. Cada ponto: titulo curto + frase explicando por que importa pro setor. Sem encheracao.
 
-**Secao 6 — "Desafio Pratico"** (ate 100 palavras, 1+ citacao)
+**Secao 6 — "Desafio Prático"** (ate 100 palavras, 1+ citacao)
 Pergunta acionavel pro aluno. Cenario do setor de **${sector.name}**. Termina com "Qual sua decisao? Por que?". Sem dar resposta. Estimula pensamento.
 
 # FORMATO DE SAIDA — JSON ESTRITO
 
 {
   "sections": [
-    { "index": 2, "titlePt": "Entendendo na pratica", "content": "..." },
+    { "index": 2, "titlePt": "Entendendo na prática", "content": "..." },
     { "index": 3, "titlePt": "Passo a passo",         "content": "..." },
-    { "index": 4, "titlePt": "Exemplo com dados reais","content": "..." },
+    { "index": 4, "titlePt": "Exemplo","content": "..." },
     { "index": 5, "titlePt": "Pontos fortes",         "content": "..." },
-    { "index": 6, "titlePt": "Desafio Pratico",       "content": "..." }
+    { "index": 6, "titlePt": "Desafio Prático",       "content": "..." }
   ]
 }
 

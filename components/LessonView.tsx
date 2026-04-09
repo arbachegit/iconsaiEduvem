@@ -10,8 +10,8 @@ import { hasSimulation } from '@/lib/nr-simulations'
 import AudioPlayer from './AudioPlayer'
 import LabCallout from './LabCallout'
 
-// Termos clicaveis aparecem em laranja-warm pra contrastar com a cor do setor
-const TERM_COLOR = '#fb923c'
+// Canon iconsaiStats: termos clicaveis na cor do accent (cyan no stats,
+// cor do setor no eduven pra coerencia visual com o resto do modal).
 
 export interface LessonSection {
   index: number
@@ -282,14 +282,14 @@ function renderMarkdownWithTerms(md: string, accentColor: string): string {
   html = html.replace(/(<li[^>]*>[\s\S]*?<\/li>(?:\s*<li[^>]*>[\s\S]*?<\/li>)*)/g, '<ul style="padding-left:24px;margin:12px 0">$1</ul>')
   html = html.split(/\n{2,}/).map(p => p.trim().startsWith('<') ? p : `<p style="margin:14px 0">${p}</p>`).join('\n')
 
-  // Clickable terms — em LARANJA WARM pra contrastar com a cor do setor.
+  // Clickable terms na cor do accent (canon iconsaiStats).
   // Sorted by length desc para casar termos compostos primeiro.
   const sorted = [...NR_CONCEPTUAL_TERMS].sort((a, b) => b.length - a.length)
   for (const term of sorted) {
     const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const regex = new RegExp(`(?<!data-term-link=")(?<![\\w])${escaped}(?![\\w])`, 'gi')
     html = html.replace(regex, (match) =>
-      `<span data-term-link="${match}" style="color:${TERM_COLOR};cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;text-decoration-color:${TERM_COLOR}66;font-weight:600;transition:all 0.15s">${match}</span>`
+      `<span data-term-link="${match}" style="color:${accentColor};cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;text-decoration-color:${accentColor}88;font-weight:600;transition:all 0.15s">${match}</span>`
     )
   }
 

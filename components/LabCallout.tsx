@@ -1,6 +1,18 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Atom } from 'lucide-react'
+
+// Canon iconsaiStats: mensagens rotativas em 1a pessoa BR, 1.8s cada.
+const LOADING_MESSAGES = [
+  'Seu laboratório tá ficando pronto…',
+  'Estamos quase lá, fique de olho…',
+  'Carregando os sliders interativos…',
+  'Calibrando o gráfico pra você mexer…',
+  'Preparando o ambiente, segura aí…',
+  'Mais um segundo e você manda nele…',
+  'Quase pronto pra você quebrar tudo…',
+]
 
 interface LabCalloutProps {
   /** Cor accent (vem do setor) */
@@ -25,6 +37,15 @@ interface LabCalloutProps {
  * Atom com atomSpin animation, gradient text shimmer.
  */
 export default function LabCallout({ color, state, elapsed = 0, onClick }: LabCalloutProps) {
+  const [msgIdx, setMsgIdx] = useState(0)
+
+  // Rotacao de mensagens a cada 1.8s quando em loading
+  useEffect(() => {
+    if (state !== 'loading') return
+    const t = setInterval(() => setMsgIdx(i => (i + 1) % LOADING_MESSAGES.length), 1800)
+    return () => clearInterval(t)
+  }, [state])
+
   if (state === 'unavailable') {
     return (
       <div style={{
@@ -116,17 +137,21 @@ export default function LabCallout({ color, state, elapsed = 0, onClick }: LabCa
           }}>
             Laboratorio interativo
           </div>
-          <div style={{
-            fontSize: 18, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3,
-          }}>
+          <div
+            key={state === 'loading' ? msgIdx : 'ready'}
+            className="fadeIn"
+            style={{
+              fontSize: 18, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3,
+            }}
+          >
             {state === 'loading'
-              ? 'Estamos quase la, fique de olho...'
-              : 'Laboratorio pronto. Mexe nos parametros.'}
+              ? LOADING_MESSAGES[msgIdx]
+              : 'Mexa nos parâmetros. Toda mexida ensina algo.'}
           </div>
           <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
             {state === 'loading'
-              ? `ai.tutor montando ha ${elapsed}s`
-              : 'Click pra abrir e brincar com a curva.'}
+              ? `ai.tutor montando há ${elapsed}s`
+              : 'Não precisa entender tudo de primeira. Arrasta os sliders, olha o gráfico, lê o que o ai.tutor responde.'}
           </div>
         </div>
 
