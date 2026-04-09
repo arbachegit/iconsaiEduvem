@@ -1,0 +1,19 @@
+[Unit]
+Description=iconsaiEduven — O Interativo Mundo da NR (Next.js standalone)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/eduven/app
+ExecStart=/bin/bash /opt/eduven/app/start.sh
+Restart=always
+RestartSec=5
+EnvironmentFile=/opt/eduven/app/.env.local
+Environment=NODE_ENV=production
+Environment=PORT=3010
+Environment=HOSTNAME=0.0.0.0
+
+[Install]
+WantedBy=multi-user.target
