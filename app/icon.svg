@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <text x="16" y="24"
+        text-anchor="middle"
+        font-family="'Libre Baskerville', Georgia, serif"
+        font-weight="900"
+        font-size="22"
+        letter-spacing="-1">
+    <tspan fill="#ef2800">i</tspan><tspan fill="#ef2800">.</tspan><tspan fill="#009cbc">ai</tspan>
+  </text>
+</svg>
