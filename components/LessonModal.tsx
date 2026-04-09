@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { X, Sparkles, Sprout, Mountain, Flame, Skull, FlaskConical } from 'lucide-react'
 import LessonView, { type LessonSection } from './LessonView'
+import SimulationLab from './SimulationLab'
 import { getSectorMeta } from '@/lib/sectors-meta'
+import { hasSimulation } from '@/lib/nr-simulations'
 
 /* ═══════════════════════════════════════════════════════════
    LessonModal — modal horizontal canonico (padrao stats)
@@ -286,18 +288,21 @@ export default function LessonModal({
             )}
           </div>
 
-          {/* Laboratorio button (placeholder — vai aparecer quando NR tiver simulacao) */}
-          {/* TODO: condicionar a `lib/nr-simulations.ts` quando criarmos a primeira */}
-          {false && !isLoading && (
+          {/* Laboratorio button — sempre aparece, scroll para o lab no fim do modal */}
+          {!isLoading && (
             <button
-              title="Laboratorio (em breve)"
+              onClick={() => {
+                document.getElementById('eduven-lab-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+              title={hasSimulation(nrId) ? 'Ir para o laboratorio interativo' : 'Laboratorio (em desenvolvimento)'}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '6px 12px', borderRadius: 9999,
-                border: `1px solid ${accent}66`,
-                background: `${accent}14`,
+                border: `1px solid ${accent}88`,
+                background: `${accent}1A`,
                 color: accent, cursor: 'pointer', fontSize: 12, fontWeight: 700,
                 fontFamily: 'inherit',
+                boxShadow: hasSimulation(nrId) ? `0 0 12px ${accent}44` : 'none',
               }}
             >
               <FlaskConical size={14} />
@@ -348,15 +353,27 @@ export default function LessonModal({
           )}
 
           {sections.length > 0 && (
-            <LessonView
-              nrCode={nrCode}
-              nrTitle={nrTitle}
-              sectorSlug={sectorSlug}
-              sectorName={sectorName}
-              title={title}
-              sections={sections}
-              restLoading={restLoading}
-            />
+            <>
+              <LessonView
+                nrCode={nrCode}
+                nrTitle={nrTitle}
+                sectorSlug={sectorSlug}
+                sectorName={sectorName}
+                title={title}
+                sections={sections}
+                restLoading={restLoading}
+              />
+
+              {/* Laboratorio anchor + render */}
+              <div id="eduven-lab-anchor" style={{ marginTop: 40 }}>
+                <SimulationLab
+                  nrId={nrId}
+                  nrCode={nrCode}
+                  nrTitle={nrTitle}
+                  accentColor={accent}
+                />
+              </div>
+            </>
           )}
         </div>
       </div>
