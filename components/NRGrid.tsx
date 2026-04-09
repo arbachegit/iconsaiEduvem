@@ -1,5 +1,8 @@
-import Link from 'next/link'
+'use client'
+
+import { useState } from 'react'
 import { getSectorMeta } from '@/lib/sectors-meta'
+import LessonModal from './LessonModal'
 
 interface NRWithRelevance {
   id: number
@@ -27,49 +30,62 @@ const RELEVANCE_LABEL: Record<number, string> = {
 }
 
 export default function NRGrid({ nrs, sectorSlug, sectorName }: NRGridProps) {
+  const [openNR, setOpenNR] = useState<NRWithRelevance | null>(null)
   const meta = getSectorMeta(sectorSlug)
   const accentColor = meta?.color || '#22d3ee'
 
-  // Group by relevance bucket: critica/muito (4-5), relevante (3), ocasional/tangencial (1-2)
-  const critical = nrs.filter(n => n.relevance >= 4)
-  const relevant = nrs.filter(n => n.relevance === 3)
+  const critical   = nrs.filter(n => n.relevance >= 4)
+  const relevant   = nrs.filter(n => n.relevance === 3)
   const occasional = nrs.filter(n => n.relevance > 0 && n.relevance < 3)
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 24px 80px' }}>
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 30, fontWeight: 700, color: '#e2e8f0', marginBottom: 8, lineHeight: 1.2 }}>
-          NRs para {sectorName}
-        </h1>
-        <p style={{ fontSize: 15, color: '#94a3b8' }}>
-          {nrs.length} normas aplicaveis ao setor, ordenadas por relevancia.
-        </p>
+    <>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 24px 80px' }}>
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 700, color: '#e2e8f0', marginBottom: 8, lineHeight: 1.2 }}>
+            NRs para {sectorName}
+          </h1>
+          <p style={{ fontSize: 15, color: '#94a3b8' }}>
+            {nrs.length} normas aplicaveis ao setor, ordenadas por relevancia. Click numa pra abrir a aula adaptativa.
+          </p>
+        </div>
+
+        {critical.length > 0 && (
+          <Section title="Criticas e muito relevantes" subtitle="Sao a base da seguranca neste setor. Comece por aqui." color={accentColor} nrs={critical} onOpen={setOpenNR} />
+        )}
+        {relevant.length > 0 && (
+          <Section title="Relevantes" subtitle="Aplicam-se a parte significativa do dia-a-dia." color="#94a3b8" nrs={relevant} onOpen={setOpenNR} />
+        )}
+        {occasional.length > 0 && (
+          <Section title="Ocasionais e tangenciais" subtitle="Tocam o setor em situacoes especificas." color="#475569" nrs={occasional} onOpen={setOpenNR} />
+        )}
+        {nrs.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 80, color: '#64748b' }}>
+            Nenhuma NR classificada para este setor ainda.
+          </div>
+        )}
       </div>
 
-      {critical.length > 0 && (
-        <Section title="Criticas e muito relevantes" subtitle="Sao a base da seguranca neste setor. Comece por aqui." color={accentColor} nrs={critical} sectorSlug={sectorSlug} />
+      {openNR && (
+        <LessonModal
+          nrId={openNR.id}
+          nrCode={openNR.code}
+          nrTitle={openNR.title}
+          sectorSlug={sectorSlug}
+          sectorName={sectorName}
+          onClose={() => setOpenNR(null)}
+        />
       )}
-      {relevant.length > 0 && (
-        <Section title="Relevantes" subtitle="Aplicam-se a parte significativa do dia-a-dia." color="#94a3b8" nrs={relevant} sectorSlug={sectorSlug} />
-      )}
-      {occasional.length > 0 && (
-        <Section title="Ocasionais e tangenciais" subtitle="Tocam o setor em situacoes especificas." color="#475569" nrs={occasional} sectorSlug={sectorSlug} />
-      )}
-      {nrs.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 80, color: '#64748b' }}>
-          Nenhuma NR classificada para este setor ainda.
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 
-function Section({ title, subtitle, color, nrs, sectorSlug }: {
+function Section({ title, subtitle, color, nrs, onOpen }: {
   title: string
   subtitle: string
   color: string
   nrs: NRWithRelevance[]
-  sectorSlug: string
+  onOpen: (nr: NRWithRelevance) => void
 }) {
   return (
     <div style={{ marginBottom: 40 }}>
@@ -85,17 +101,18 @@ function Section({ title, subtitle, color, nrs, sectorSlug }: {
         gap: 14,
       }}>
         {nrs.map(nr => (
-          <Link
+          <button
             key={nr.id}
-            href={`/aulas?nr=${nr.id}&sector=${sectorSlug}`}
+            onClick={() => onOpen(nr)}
             className="card-hover"
             style={{
-              display: 'block',
+              display: 'block', textAlign: 'left',
               background: '#0c1320',
               border: '1px solid rgba(100,116,139,0.2)',
               borderRadius: 12,
               padding: '18px 20px',
-              textDecoration: 'none',
+              cursor: 'pointer', fontFamily: 'inherit',
+              width: '100%',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -112,7 +129,7 @@ function Section({ title, subtitle, color, nrs, sectorSlug }: {
                 {nr.rationale}
               </p>
             )}
-          </Link>
+          </button>
         ))}
       </div>
     </div>
