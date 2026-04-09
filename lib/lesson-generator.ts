@@ -277,10 +277,29 @@ Gere AGORA as secoes 2, 3, 4, 5 e 6, mantendo continuidade tonal. TODO exemplo d
 
   const provider = getProvider(response)
   const rawText = extractText(response)
-  const parsed = safeParseJSON(rawText) as { sections: LessonSection[] }
+  let parsed: { sections: LessonSection[] }
+  try {
+    parsed = safeParseJSON(rawText) as { sections: LessonSection[] }
+  } catch (e) {
+    console.error('[lesson-rest] JSON parse failed. Raw response (first 500 chars):', rawText.slice(0, 500))
+    throw new Error(`lesson-rest: JSON parse error — ${(e as Error).message}`)
+  }
 
-  if (!parsed.sections || !Array.isArray(parsed.sections) || parsed.sections.length !== 5) {
-    throw new Error(`lesson-rest: esperava 5 secoes, recebeu ${parsed.sections?.length ?? 0}`)
+  if (!parsed.sections || !Array.isArray(parsed.sections)) {
+    console.error('[lesson-rest] sections missing. Parsed:', JSON.stringify(parsed).slice(0, 500))
+    throw new Error('lesson-rest: response missing sections array')
+  }
+
+  // Aceita 4-6 secoes (modelo as vezes corta a 6 ou inclui 1 extra). Filtra so 2-6.
+  parsed.sections = parsed.sections
+    .filter(s => s && typeof s.index === 'number' && s.index >= 2 && s.index <= 6 && s.content)
+    .sort((a, b) => a.index - b.index)
+
+  if (parsed.sections.length === 0) {
+    throw new Error(`lesson-rest: nenhuma secao 2-6 valida no JSON retornado`)
+  }
+  if (parsed.sections.length < 5) {
+    console.warn(`[lesson-rest] aviso: recebeu ${parsed.sections.length} secoes (esperava 5). Continuando.`)
   }
 
   // Junta secao1 + secoes 2-6 e atualiza o lesson

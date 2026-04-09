@@ -40,13 +40,13 @@ export async function POST(req: NextRequest) {
     const sectionTitle = String(body.section_title || '')
     const sectionContent = String(body.section_content || '')
 
-    if (understood) {
+    // 1a chamada (fire-and-forget): so registra feedback. Sem section_content
+    // significa que a UI nao quer recap ainda — apenas marca o feedback.
+    if (understood || !sectionContent) {
       return NextResponse.json({ ok: true })
     }
 
-    if (!sectionContent) {
-      return NextResponse.json({ error: 'section_content required for recap' }, { status: 400 })
-    }
+    // 2a chamada (com section_content): aluno disse "nao compreendi" e quer recap.
 
     const userMsg = `O aluno disse que NAO compreendeu a secao "${sectionTitle}".
 
