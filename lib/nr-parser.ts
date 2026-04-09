@@ -12,9 +12,28 @@
  */
 
 const HEADING_RE = /^\s*(\d+(?:\.\d+)+)\.?\s*[-:.]?\s+(.+?)\s*$/
+const ANNEX_RE = /^\s*ANEXO\s+([IVX]+|\d+)\b\s*[-:.–—]?\s*(.*?)\s*$/i
 const FOOTER_RE = /^.*Este texto não substitui o publicado no DOU.*$/gm
 const MAX_TOKENS = 500
 const MIN_TOKENS = 30
+
+// Roman numerals → integer (suficiente para anexos de NR — geralmente até XII)
+const ROMAN_VALUES: Record<string, number> = { I: 1, V: 5, X: 10 }
+function romanToInt(s: string): number {
+  let total = 0
+  for (let i = 0; i < s.length; i++) {
+    const cur = ROMAN_VALUES[s[i].toUpperCase()] || 0
+    const next = ROMAN_VALUES[s[i + 1]?.toUpperCase()] || 0
+    total += cur < next ? -cur : cur
+  }
+  return total
+}
+
+function annexLabel(raw: string): string {
+  // raw can be 'I', 'II', '1', '2'... → return 'A1', 'A2', ...
+  const n = /^\d+$/.test(raw) ? parseInt(raw, 10) : romanToInt(raw)
+  return `A${n}`
+}
 
 export interface ParsedChunk {
   chapter: string                    // '35.4.2.1'
@@ -30,9 +49,11 @@ export function tokenize(s: string): number {
 }
 
 interface RawNode {
-  chapter: string
+  chapter: string             // e.g. '35.4.2.1' or 'A1.4.2'
   title: string
   body: string[]
+  isAnnex: boolean            // true se o node esta dentro de um ANEXO
+  annexLabel?: string         // 'A1', 'A2' etc, se isAnnex
 }
 
 function parseRaw(text: string): RawNode[] {
@@ -40,12 +61,39 @@ function parseRaw(text: string): RawNode[] {
   const lines = cleaned.split('\n')
   const nodes: RawNode[] = []
   let cur: RawNode | null = null
+  let currentAnnex: string | null = null  // 'A1', 'A2', ...
 
   for (const ln of lines) {
+    // Detect annex marker first (precedence over heading regex)
+    const annexMatch = ln.match(ANNEX_RE)
+    if (annexMatch) {
+      // Push pending node before switching context
+      if (cur) { nodes.push(cur); cur = null }
+      currentAnnex = annexLabel(annexMatch[1])
+      // Optional: emit a header chunk for the annex itself
+      const annexTitle = annexMatch[2] || `Anexo ${annexMatch[1]}`
+      nodes.push({
+        chapter: currentAnnex,
+        title: annexTitle.trim(),
+        body: [],
+        isAnnex: true,
+        annexLabel: currentAnnex,
+      })
+      continue
+    }
+
     const m = ln.match(HEADING_RE)
     if (m && m[2].length < 120) {
       if (cur) nodes.push(cur)
-      cur = { chapter: m[1], title: m[2].trim(), body: [] }
+      const localChapter = m[1]
+      const fullChapter = currentAnnex ? `${currentAnnex}.${localChapter}` : localChapter
+      cur = {
+        chapter: fullChapter,
+        title: m[2].trim(),
+        body: [],
+        isAnnex: !!currentAnnex,
+        annexLabel: currentAnnex || undefined,
+      }
     } else if (cur && ln.trim()) {
       cur.body.push(ln.trim())
     }
@@ -57,25 +105,23 @@ function parseRaw(text: string): RawNode[] {
 /**
  * Para cada chunk, calcula a cadeia de ancestrais hierárquicos.
  * Ex: 35.4.2.1 → ancestrais 35.4.2, 35.4, 35
- * Procura o título de cada ancestral nos nodes anteriores.
+ * Para anexos: A1.4.2 → ancestrais A1.4, A1
+ * Procura o título de cada ancestral nos nodes anteriores e normaliza
+ * whitespace.
  */
 function buildBreadcrumb(chapter: string, allNodes: RawNode[]): Array<{ n: string; t: string }> {
   const parts = chapter.split('.')
   const ancestors: Array<{ n: string; t: string }> = []
 
-  for (let i = 1; i < parts.length; i++) {
-    const ancestorChapter = parts.slice(0, i + 1).join('.')
+  for (let i = 1; i <= parts.length; i++) {
+    const ancestorChapter = parts.slice(0, i).join('.')
     if (ancestorChapter === chapter) continue
     const found = allNodes.find(n => n.chapter === ancestorChapter)
     if (found) {
-      ancestors.push({ n: ancestorChapter, t: found.title })
+      ancestors.push({ n: ancestorChapter, t: found.title.replace(/\s+/g, ' ').trim() })
     }
   }
   return ancestors
-}
-
-function isAnnex(node: RawNode): boolean {
-  return /^anexo/i.test(node.title)
 }
 
 function splitGiantChunk(chunk: ParsedChunk): ParsedChunk[] {
@@ -138,11 +184,11 @@ export function parseNRText(text: string): ParsedChunk[] {
     const breadcrumb = buildBreadcrumb(node.chapter, nodes)
     const baseChunk: ParsedChunk = {
       chapter: node.chapter,
-      title: node.title,
+      title: node.title.replace(/\s+/g, ' ').trim(),
       breadcrumb,
       content,
       token_count: tok,
-      section_type: isAnnex(node) ? 'annex' : 'item',
+      section_type: node.isAnnex ? 'annex' : 'item',
     }
     chunks.push(...splitGiantChunk(baseChunk))
   }
