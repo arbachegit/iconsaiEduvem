@@ -20,7 +20,7 @@
  *
  * Idempotente: re-rodar so reprocessa NRs que mudaram.
  */
-import 'dotenv/config'
+import '../lib/load-env'
 import pdfParse from 'pdf-parse'
 import { getDb } from '../lib/db'
 import { NR_INDEX, PILOT_NRS, type NRIndexEntry } from '../data/nr-index'
@@ -81,7 +81,7 @@ async function ingestOne(nr: NRIndexEntry, args: CliArgs): Promise<IngestStats> 
   try {
     // 1+2. Resolve + download PDF
     console.log(`  resolving PDF URL...`)
-    const pdfUrl = await resolvePdfUrl(nr.source_url)
+    const pdfUrl = await resolvePdfUrl(nr.source_url, nr.id)
     console.log(`  PDF: ${pdfUrl.split('/').pop()}`)
     const { buf, sha256 } = await downloadPdf(pdfUrl)
     console.log(`  downloaded ${(buf.length / 1024).toFixed(0)}KB sha=${sha256.slice(0, 12)}`)

@@ -13,7 +13,7 @@
  *
  * NÃO modifica nada. Read-only.
  */
-import 'dotenv/config'
+import '../lib/load-env'
 import { getDb, SCHEMA } from '../lib/db'
 
 const TABLES = [
