@@ -17,6 +17,7 @@ import type { NRDifficulty } from '@/data/domain-configs/nr'
 
 interface CliArgs {
   nrId: number
+  sector: string
   difficulty: NRDifficulty
   persist: boolean
 }
@@ -24,12 +25,14 @@ interface CliArgs {
 function parseArgs(): CliArgs {
   const args = process.argv.slice(2)
   let nrId: number | undefined
+  let sector: string | undefined
   let difficulty: NRDifficulty = 'same'
   let persist = true
 
   for (let i = 0; i < args.length; i++) {
     const a = args[i]
     if (a === '--nr') nrId = parseInt(args[++i], 10)
+    else if (a === '--sector') sector = args[++i]
     else if (a === '--difficulty') {
       const v = args[++i]
       if (v !== 'easier' && v !== 'same' && v !== 'harder') {
@@ -39,15 +42,17 @@ function parseArgs(): CliArgs {
     }
     else if (a === '--no-persist') persist = false
   }
-  if (!nrId || isNaN(nrId)) {
-    console.error('Uso: npx tsx scripts/test-lesson.ts --nr <id> [--difficulty easier|same|harder] [--no-persist]')
+  if (!nrId || isNaN(nrId) || !sector) {
+    console.error('Uso: npx tsx scripts/test-lesson.ts --nr <id> --sector <slug> [--difficulty easier|same|harder] [--no-persist]')
+    console.error('Setores disponiveis: construcao_civil | engenharia_civil | industria_calcados | escritorio_contabilidade')
     process.exit(1)
   }
-  return { nrId, difficulty, persist }
+  return { nrId, sector, difficulty, persist }
 }
 
 function countCitations(text: string): { count: number; cites: string[] } {
-  const re = /\[NR-\d+,\s*item\s+[\w.#]+\]/gi
+  // [NR-X, item Y.Z] e variantes com ", alínea g" / ", parágrafo único" etc.
+  const re = /\[NR-\d+,[^\]]+\]/gi
   const matches = text.match(re) || []
   return { count: matches.length, cites: matches }
 }
@@ -58,11 +63,12 @@ function pluralize(n: number, sing: string, plur: string): string {
 
 async function main() {
   const args = parseArgs()
-  console.log(`\nGerando aula NR-${String(args.nrId).padStart(2, '0')} (difficulty=${args.difficulty}, persist=${args.persist})...`)
+  console.log(`\nGerando aula NR-${String(args.nrId).padStart(2, '0')} | setor=${args.sector} | difficulty=${args.difficulty} | persist=${args.persist}`)
   console.log('Isso leva 10-30s. Aguarde.\n')
 
   const t0 = Date.now()
   const lesson = await generateLesson(args.nrId, {
+    sector: args.sector,
     difficulty: args.difficulty,
     persist: args.persist,
   })
@@ -70,6 +76,7 @@ async function main() {
 
   console.log('='.repeat(80))
   console.log(`AULA GERADA — ${lesson.nrCode} ${lesson.nrTitle}`)
+  console.log(`SETOR: ${lesson.sectorName}`)
   console.log('='.repeat(80))
   console.log(`Titulo:      ${lesson.title}`)
   console.log(`Provider:    ${lesson.provider}`)

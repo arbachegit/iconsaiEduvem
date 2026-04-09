@@ -16,12 +16,13 @@ import { getDb } from './db'
 import { queryNR, type RAGChunk } from './nr-rag'
 import { createMessage, extractText, getProvider } from './llm-client'
 import {
-  LESSON_SYSTEM_PROMPT,
+  composeLessonPrompt,
   LESSON_SECTIONS,
   NR_MODELS,
   NR_RAG_CONFIG,
   NR_DIFFICULTY_PROFILES,
   type NRDifficulty,
+  type SectorContext,
 } from '@/data/domain-configs/nr'
 
 export interface LessonSection {
@@ -35,6 +36,9 @@ export interface LessonResult {
   nrId: number
   nrCode: string
   nrTitle: string
+  sectorId: number
+  sectorSlug: string
+  sectorName: string
   difficulty: NRDifficulty
   title: string
   sections: LessonSection[]
@@ -50,6 +54,15 @@ interface NRRow {
   status: string
 }
 
+interface SectorRow {
+  id: number
+  slug: string
+  name: string
+  description: string
+  example_companies: string
+  typical_jobs: string[]
+}
+
 async function loadNR(nrId: number): Promise<NRRow> {
   const db = getDb()
   const { data, error } = await db
@@ -61,16 +74,42 @@ async function loadNR(nrId: number): Promise<NRRow> {
   return data as NRRow
 }
 
+async function loadSector(sectorIdOrSlug: number | string): Promise<SectorRow> {
+  const db = getDb()
+  const query = db.from('sectors').select('id, slug, name, description, example_companies, typical_jobs')
+  const { data, error } = typeof sectorIdOrSlug === 'number'
+    ? await query.eq('id', sectorIdOrSlug).single()
+    : await query.eq('slug', sectorIdOrSlug).single()
+  if (error || !data) throw new Error(`Sector ${sectorIdOrSlug} not found in eduven.sectors: ${error?.message}`)
+  return data as SectorRow
+}
+
+function sectorToContext(sector: SectorRow): SectorContext {
+  return {
+    slug: sector.slug,
+    name: sector.name,
+    description: sector.description,
+    exampleCompanies: sector.example_companies,
+    typicalJobs: sector.typical_jobs,
+  }
+}
+
 function buildContextText(chunks: RAGChunk[]): string {
   return chunks
     .map((c, i) => `<chunk index=${i + 1} cite="[${c.nr_code}, item ${c.chapter}]">\n${c.content}\n</chunk>`)
     .join('\n\n')
 }
 
-function buildUserMessage(nr: NRRow, difficulty: NRDifficulty, context: string): string {
+function buildUserMessage(
+  nr: NRRow,
+  sector: SectorRow,
+  difficulty: NRDifficulty,
+  context: string
+): string {
   const profile = NR_DIFFICULTY_PROFILES[difficulty]
   return `Gere a aula completa sobre a ${nr.code}: "${nr.title}".
 
+SETOR DO ALUNO: ${sector.name}
 DIFICULDADE: ${difficulty.toUpperCase()}
 ${profile}
 
@@ -78,7 +117,7 @@ CONTEXTO DA NORMA (use APENAS isso para citar — NAO invente itens):
 
 ${context}
 
-Retorne APENAS o JSON conforme especificacao. Nada antes, nada depois. Sem markdown wrappers.`
+Lembre-se: TODO exemplo, TODA analogia, TODO cenario inventado deve estar dentro do setor de **${sector.name}**. Retorne APENAS o JSON conforme especificacao. Nada antes, nada depois. Sem markdown wrappers.`
 }
 
 /**
@@ -124,10 +163,10 @@ function validateLesson(parsed: unknown): ParsedLesson {
 
 /**
  * Persiste a aula em eduven.lessons. Retorna o id ou null se falhou.
- * Falha de persistencia eh logada mas nao quebra o fluxo (pra UI ainda renderizar).
  */
 async function persistLesson(
   nr: NRRow,
+  sector: SectorRow,
   difficulty: NRDifficulty,
   parsed: ParsedLesson,
   ragChunksUsed: number[]
@@ -136,6 +175,7 @@ async function persistLesson(
     const db = getDb()
     const { data, error } = await db.from('lessons').insert({
       nr_id: nr.id,
+      sector_id: sector.id,
       title: parsed.title,
       difficulty,
       sections: parsed.sections,
@@ -153,22 +193,27 @@ async function persistLesson(
 }
 
 export interface GenerateOptions {
+  /** ID numerico OU slug ('construcao_civil') do setor. Obrigatorio. */
+  sector: number | string
   difficulty?: NRDifficulty   // default 'same'
   topK?: number               // default 12 (de NR_RAG_CONFIG)
   persist?: boolean           // default true
 }
 
-export async function generateLesson(nrId: number, options: GenerateOptions = {}): Promise<LessonResult> {
+export async function generateLesson(nrId: number, options: GenerateOptions): Promise<LessonResult> {
   const t0 = Date.now()
+  if (options.sector === undefined || options.sector === null) {
+    throw new Error('generateLesson: options.sector eh obrigatorio (id ou slug)')
+  }
   const difficulty: NRDifficulty = options.difficulty ?? 'same'
   const topK = options.topK ?? NR_RAG_CONFIG.lessonGeneration.topK
   const persist = options.persist !== false
 
-  // 1. Load NR
-  const nr = await loadNR(nrId)
+  // 1. Load NR + Sector em paralelo
+  const [nr, sector] = await Promise.all([loadNR(nrId), loadSector(options.sector)])
 
-  // 2. RAG: query usando o titulo da NR como semente
-  const ragQuery = `${nr.code} ${nr.title}`
+  // 2. RAG: query usando o titulo da NR + setor como semente
+  const ragQuery = `${nr.code} ${nr.title} ${sector.name}`
   const rag = await queryNR(ragQuery, {
     nrId,
     topK,
@@ -178,16 +223,18 @@ export async function generateLesson(nrId: number, options: GenerateOptions = {}
     throw new Error(`RAG retornou 0 chunks para ${nr.code} — verifique se a NR foi ingerida`)
   }
 
-  // 3. Build prompt
+  // 3. Build prompt (sector-aware)
+  const sectorContext = sectorToContext(sector)
+  const systemPrompt = composeLessonPrompt(sectorContext)
   const context = buildContextText(rag.chunks)
-  const userMessage = buildUserMessage(nr, difficulty, context)
+  const userMessage = buildUserMessage(nr, sector, difficulty, context)
 
   // 4. Call LLM
   const llmResponse = await createMessage(
     {
       model: NR_MODELS.lessonGenerator,
       max_tokens: 4000,
-      system: LESSON_SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     },
     { route: '/lib/lesson-generator' }
@@ -196,18 +243,17 @@ export async function generateLesson(nrId: number, options: GenerateOptions = {}
   const provider = getProvider(llmResponse)
   const rawText = extractText(llmResponse)
 
-  // 5. Parse + validate
+  // 5. Parse + validate (com retry)
   let parsed: ParsedLesson
   try {
     parsed = validateLesson(safeParseJSON(rawText))
   } catch (err) {
-    // 1 retry com prompt mais agressivo
     console.warn(`[lesson-generator] parse failed, retrying: ${(err as Error).message}`)
     const retryResponse = await createMessage(
       {
         model: NR_MODELS.lessonGenerator,
         max_tokens: 4000,
-        system: LESSON_SYSTEM_PROMPT + '\n\nIMPORTANTE: Sua resposta anterior nao era JSON valido. Retorne APENAS o objeto JSON, sem texto antes/depois, sem markdown.',
+        system: systemPrompt + '\n\nIMPORTANTE: Sua resposta anterior nao era JSON valido. Retorne APENAS o objeto JSON, sem texto antes/depois, sem markdown.',
         messages: [{ role: 'user', content: userMessage }],
       },
       { route: '/lib/lesson-generator/retry' }
@@ -217,13 +263,16 @@ export async function generateLesson(nrId: number, options: GenerateOptions = {}
 
   // 6. Persist
   const ragChunksUsed = rag.chunks.map(c => c.id)
-  const lessonId = persist ? await persistLesson(nr, difficulty, parsed, ragChunksUsed) : null
+  const lessonId = persist ? await persistLesson(nr, sector, difficulty, parsed, ragChunksUsed) : null
 
   return {
     lessonId,
     nrId: nr.id,
     nrCode: nr.code,
     nrTitle: nr.title,
+    sectorId: sector.id,
+    sectorSlug: sector.slug,
+    sectorName: sector.name,
     difficulty,
     title: parsed.title,
     sections: parsed.sections,
