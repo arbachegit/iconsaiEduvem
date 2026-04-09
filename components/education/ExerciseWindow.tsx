@@ -1,0 +1,255 @@
+'use client'
+
+import { useState, useRef } from 'react'
+import { TypewriterOutput } from './TypewriterOutput'
+import { safeEval, formatResult } from '@/lib/safe-eval'
+
+/* ═══════════════════════════════════════════════════════════
+   ExerciseWindow — Portado 1:1 do iconsaiStats.
+   Endpoints swapped: /api/ai/exercise → /api/eduven/exercise,
+                      /api/ai/debug → /api/eduven/debug
+   ═══════════════════════════════════════════════════════════ */
+
+interface ExerciseWindowProps {
+  exerciseId: number
+  prompt: string
+  hints: string[]
+  expectedInputExample?: string
+  onNewExercise?: () => void
+}
+
+type ExerciseState = 'idle' | 'executing' | 'correct' | 'error' | 'debugging' | 'debug_complete'
+
+export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample, onNewExercise }: ExerciseWindowProps) {
+  const [userInput, setUserInput] = useState('')
+  const [output, setOutput] = useState('')
+  const [debugText, setDebugText] = useState('')
+  const [state, setState] = useState<ExerciseState>('idle')
+  const [submissionId, setSubmissionId] = useState<number | null>(null)
+  const [showHints, setShowHints] = useState(false)
+  const [score, setScore] = useState<number | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== 'Tab' && e.key !== 'Enter') return
+    const textarea = e.currentTarget
+    const cursor = textarea.selectionStart
+    const textBefore = userInput.slice(0, cursor)
+    const textAfter = userInput.slice(cursor)
+    const lineStart = textBefore.lastIndexOf('\n') + 1
+    const currentLine = textBefore.slice(lineStart)
+    const match = currentLine.match(/^(.*?)=\s*$/)
+    if (!match) return
+    const leftSide = match[1].trim()
+    if (!leftSide) return
+    const result = safeEval(leftSide)
+    if (result === null) return
+    e.preventDefault()
+    const formatted = formatResult(result)
+    const before = textBefore.replace(/=\s*$/, '= ')
+    const newText = before + formatted + textAfter
+    const newCursor = before.length + formatted.length
+    setUserInput(newText)
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.selectionStart = newCursor
+        textareaRef.current.selectionEnd = newCursor
+      }
+    })
+  }
+
+  const handleExecute = async () => {
+    if (!userInput.trim()) return
+    setState('executing')
+    setOutput('')
+    setDebugText('')
+
+    try {
+      const res = await fetch('/api/eduven/exercise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exercise_id: exerciseId, user_input: userInput }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setOutput(data.error || 'Erro ao avaliar')
+        setState('error')
+        return
+      }
+
+      setSubmissionId(data.submissionId)
+      setScore(data.score)
+
+      if (data.isCorrect) {
+        setOutput(data.executionOutput || 'Resposta correta! Parabéns!')
+        setState('correct')
+      } else {
+        setOutput(data.executionOutput || `Resposta incorreta. ${data.errorType ? `Tipo de erro: ${data.errorType}` : ''}\nAperte "Debugar" para entender o que deu errado.`)
+        setState('error')
+      }
+    } catch {
+      setOutput('Erro de conexão. Tente novamente.')
+      setState('error')
+    }
+  }
+
+  const handleDebug = async () => {
+    if (!submissionId) return
+    setState('debugging')
+
+    try {
+      const res = await fetch('/api/eduven/debug', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submission_id: submissionId }),
+      })
+      const data = await res.json()
+      setDebugText(data.debugText || 'Erro ao gerar debug.')
+      setState('debug_complete')
+    } catch {
+      setDebugText('Erro de conexão ao gerar debug.')
+      setState('debug_complete')
+    }
+  }
+
+  const inputBorderColor =
+    state === 'correct' ? '#4ade80' :
+    state === 'error' || state === 'debugging' || state === 'debug_complete' ? '#f97316' :
+    '#1e293b'
+
+  return (
+    <div style={{ margin: '20px 0', borderRadius: 12, overflow: 'hidden', border: '1px solid #1e293b' }}>
+      <div style={{ padding: '16px 20px', background: '#0c1320', borderBottom: '1px solid #1e293b' }}>
+        <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+          Exercício
+        </div>
+        <div style={{ fontSize: 15, color: '#e2e8f0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+          {prompt}
+        </div>
+        {hints.length > 0 && (
+          <button
+            onClick={() => setShowHints(!showHints)}
+            style={{
+              marginTop: 8, padding: '4px 12px', fontSize: 12, color: '#64748b',
+              background: 'none', border: '1px solid #334155', borderRadius: 6, cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {showHints ? 'Ocultar dicas' : `Ver dicas (${hints.length})`}
+          </button>
+        )}
+        {showHints && (
+          <ul style={{ margin: '8px 0 0', paddingLeft: 20, color: '#94a3b8', fontSize: 13 }}>
+            {hints.map((h, i) => <li key={i} style={{ marginBottom: 4 }}>{h}</li>)}
+          </ul>
+        )}
+      </div>
+
+      <div style={{ background: '#080c14' }}>
+        <textarea
+          ref={textareaRef}
+          value={userInput}
+          onChange={e => setUserInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={expectedInputExample
+            ? `Exemplo de formato:\n${expectedInputExample}\n\nEscreva sua resolução aqui...\n\nDica: termine uma linha com "=" e aperte Tab pra calcular.`
+            : 'Escreva sua resolução aqui.\n\nDica: termine uma linha com "=" e aperte Tab pra calcular.'}
+          disabled={state === 'executing' || state === 'debugging'}
+          style={{
+            width: '100%', minHeight: 150, padding: 16, resize: 'vertical',
+            background: '#080c14', color: '#e2e8f0', border: 'none',
+            borderLeft: `3px solid ${inputBorderColor}`,
+            fontFamily: '"JetBrains Mono", "Fira Code", monospace', fontSize: 14,
+            lineHeight: 1.6, outline: 'none',
+            transition: 'border-color 0.3s',
+          }}
+        />
+      </div>
+
+      <div style={{
+        display: 'flex', gap: 12, padding: '12px 16px',
+        background: '#0c1320', borderTop: '1px solid #1e293b', borderBottom: '1px solid #1e293b',
+      }}>
+        <button
+          onClick={handleExecute}
+          disabled={!userInput.trim() || state === 'executing' || state === 'debugging'}
+          style={{
+            padding: '10px 24px', borderRadius: 8, border: 'none',
+            background: state === 'executing' ? '#1e293b' : '#22d3ee',
+            color: state === 'executing' ? '#64748b' : '#0a0e17',
+            fontWeight: 700, fontSize: 14, cursor: state === 'executing' ? 'wait' : 'pointer',
+            fontFamily: 'Inter, sans-serif',
+            opacity: !userInput.trim() ? 0.4 : 1,
+          }}
+        >
+          {state === 'executing' ? 'Executando...' : 'Executar'}
+        </button>
+        <button
+          onClick={handleDebug}
+          disabled={state !== 'error' || !submissionId}
+          style={{
+            padding: '10px 24px', borderRadius: 8, border: '1px solid #f97316',
+            background: state === 'debugging' ? '#f97316' : 'transparent',
+            color: state === 'debugging' ? '#fff' : '#f97316',
+            fontWeight: 700, fontSize: 14,
+            cursor: state !== 'error' ? 'default' : 'pointer',
+            fontFamily: 'Inter, sans-serif',
+            opacity: state !== 'error' ? 0.3 : 1,
+          }}
+        >
+          {state === 'debugging' ? 'Debugando...' : 'Debugar'}
+        </button>
+        {score !== null && (
+          <div style={{
+            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6,
+            fontSize: 13, color: score >= 0.8 ? '#4ade80' : score >= 0.5 ? '#fbbf24' : '#ef4444',
+            fontWeight: 600,
+          }}>
+            Score: {(score * 100).toFixed(0)}%
+          </div>
+        )}
+      </div>
+
+      <div style={{ minHeight: 80, background: '#080c14', padding: state === 'idle' ? 0 : 16 }}>
+        {state === 'correct' && (
+          <div style={{ color: '#4ade80', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+            {output}
+          </div>
+        )}
+        {state === 'error' && (
+          <div style={{ color: '#f97316', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+            {output}
+          </div>
+        )}
+        {(state === 'debugging' || state === 'debug_complete') && debugText && (
+          <TypewriterOutput text={debugText} speed={12} />
+        )}
+        {state === 'executing' && (
+          <div style={{ color: '#64748b', fontSize: 13, padding: 16 }}>
+            Avaliando sua resposta...
+          </div>
+        )}
+      </div>
+
+      {(state === 'correct' || state === 'debug_complete') && onNewExercise && (
+        <div style={{
+          padding: '16px', background: '#0c1320', borderTop: '1px solid #1e293b',
+          textAlign: 'center',
+        }}>
+          <button
+            onClick={onNewExercise}
+            style={{
+              padding: '12px 32px', borderRadius: 10, border: 'none',
+              background: 'linear-gradient(135deg, #22d3ee, #3b82f6)',
+              color: '#fff', fontWeight: 700, fontSize: 15,
+              cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            Vamos tentar um novo exercício?
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}

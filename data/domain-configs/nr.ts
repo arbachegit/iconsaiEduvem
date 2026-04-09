@@ -226,10 +226,13 @@ export const LESSON_PROHIBITIONS = [
   'NUNCA escreva "em conclusao" ou similares',
 ] as const
 
+// Canon iconsaiStats: haiku-4-5 para geracao de aula. Sonnet custa 10x mais
+// e e 3x mais lento — estoura o orcamento de latencia (stage 1 em 13s quando
+// deveria ser ~3-5s). Haiku atende o tom canonico com qualidade suficiente.
 export const NR_MODELS = {
-  lessonGenerator: 'claude-sonnet-4-5-20250929',
+  lessonGenerator: 'claude-haiku-4-5-20251001',
   termExplainer:   'claude-haiku-4-5-20251001',
-  exerciseEvaluator: 'claude-sonnet-4-5-20250929',
+  exerciseEvaluator: 'claude-haiku-4-5-20251001',
 } as const
 
 export const NR_RAG_CONFIG = {
