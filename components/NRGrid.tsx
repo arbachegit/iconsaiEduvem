@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { getSectorMeta } from '@/lib/sectors-meta'
 import LessonModal from './LessonModal'
+import NRAnimation from './NRAnimation'
 
 interface NRWithRelevance {
   id: number
@@ -149,18 +150,32 @@ function NRCard({ nr, color, onOpen, delay }: {
         }} />
       )}
 
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span
-          className="nr-code"
-          style={{
-            fontSize: 14, fontWeight: 700, color,
-            fontFamily: "'JetBrains Mono', monospace",
-            textShadow: `0 0 10px ${color}66`,
-          }}
-        >
-          {nr.code}
-        </span>
-        <RelevanceBadge relevance={nr.relevance} />
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+        {/* SVG animation distinct per NR */}
+        <div style={{
+          width: 44, height: 44, borderRadius: 10,
+          background: `${color}11`,
+          border: `1px solid ${color}33`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <NRAnimation nrId={nr.id} color={color} size={32} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span
+              className="nr-code"
+              style={{
+                fontSize: 13, fontWeight: 700, color,
+                fontFamily: "'JetBrains Mono', monospace",
+                textShadow: `0 0 10px ${color}66`,
+              }}
+            >
+              {nr.code}
+            </span>
+            <RelevanceBadge relevance={nr.relevance} />
+          </div>
+        </div>
       </div>
       <h3 style={{ position: 'relative', fontSize: 14, fontWeight: 600, color: '#e2e8f0', lineHeight: 1.4, marginBottom: 8 }}>
         {nr.title}
