@@ -5,10 +5,11 @@ import { LessonNavigation } from './education/LessonNavigation'
 import { SvgComprehensionCheck } from './education/SvgComprehensionCheck'
 import { TermModal, useTermModalStack } from './education/TermModal'
 import { ExerciseWindow } from './education/ExerciseWindow'
-import LabBanner, { type NRSimulationConfig } from './education/LabBanner'
+import LabBanner from './education/LabBanner'
 import PlayButton from './education/PlayButton'
 import { getSectorMeta } from '@/lib/sectors-meta'
 import { NR_CONCEPTUAL_TERMS } from '@/data/domain-configs/nr'
+import { getSimulation } from '@/lib/nr-simulations'
 
 export interface LessonSection {
   index: number
@@ -35,13 +36,19 @@ interface LessonViewProps {
   exerciseIds?: Record<number, number>
   restLoading?: boolean
   generationElapsed?: number
-  simulation?: NRSimulationConfig | null
 }
 
 export default function LessonView({
   lessonId, nrId, nrCode, nrTitle, sectorSlug, sectorName, title, sections,
-  exerciseIds = {}, restLoading = false, generationElapsed = 0, simulation = null,
+  exerciseIds = {}, restLoading = false, generationElapsed = 0,
 }: LessonViewProps) {
+  // Simulacao vem do registro por nrId. Se stage2 ainda carregando, mostra loading.
+  // Se NR nao tem sim registrada, fica null (LabBanner mostra loading forever — mas
+  // sao poucas NRs, entao passa pra null depois do restLoading acabar).
+  const registeredSim = getSimulation(nrId)
+  const simulation = !restLoading && registeredSim
+    ? { title: registeredSim.title, subtitle: registeredSim.subtitle, Component: registeredSim.Component }
+    : null
   const [currentSection, setCurrentSection] = useState(1)
   const [comprehensionFeedback, setComprehensionFeedback] = useState<Record<number, boolean | undefined>>({})
   const [recapText, setRecapText] = useState<Record<number, string>>({})

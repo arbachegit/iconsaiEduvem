@@ -21,11 +21,11 @@ const LOADING_MESSAGES = [
   'Quase pronto pra você quebrar tudo…',
 ];
 
-// Placeholder tipo até termos NR simulations reais
+// Shape usada pelo LabBanner. Componente vem do registro em lib/nr-simulations.ts.
 export interface NRSimulationConfig {
   title: string;
   subtitle?: string;
-  // Shape a ser expandida quando NR-6 EPI chegar
+  Component: React.ComponentType;
 }
 
 interface Props {
@@ -96,7 +96,16 @@ export default function LabBanner({ laboratoryRef, simulation, isLoading, elapse
             }}>
               Laboratório interativo
             </div>
-            {ready ? (
+            {ready && simulation ? (
+              <>
+                <div style={{ color: '#e2e8f0', fontSize: 17, fontWeight: 700, marginTop: 2 }}>
+                  {simulation.title}
+                </div>
+                <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
+                  {simulation.subtitle || 'Mexa nos parâmetros. Toda mexida ensina algo.'}
+                </div>
+              </>
+            ) : ready ? (
               <>
                 <div style={{ color: '#e2e8f0', fontSize: 17, fontWeight: 700, marginTop: 2 }}>
                   Mexa nos parâmetros. Toda mexida ensina algo.
@@ -118,19 +127,8 @@ export default function LabBanner({ laboratoryRef, simulation, isLoading, elapse
           </div>
         </div>
         {ready && simulation && (
-          <div style={{
-            background: '#080c14',
-            border: '1px dashed rgba(34,211,238,0.4)',
-            borderRadius: 8,
-            padding: '24px 20px',
-            color: '#94a3b8',
-            fontSize: 13,
-            textAlign: 'center',
-          }}>
-            [Simulação interativa: {simulation.title}]
-            <div style={{ marginTop: 6, fontSize: 11, color: '#64748b' }}>
-              Chart + sliders + ai.tutor inline vira aqui quando a primeira sim for construída (NR-6 EPI).
-            </div>
+          <div style={{ marginTop: 6 }}>
+            <simulation.Component />
           </div>
         )}
       </div>
