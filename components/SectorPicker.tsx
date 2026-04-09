@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SECTORS_META } from '@/lib/sectors-meta'
+import SectorAnimation from './SectorAnimation'
 
 interface Sector {
   id: number
@@ -68,14 +69,14 @@ export default function SectorPicker({ sectors }: { sectors: Sector[] }) {
                 background: meta.color,
               }} />
               <div style={{
-                width: 48, height: 48, borderRadius: 12,
+                width: 80, height: 80, borderRadius: 16,
                 background: meta.colorSoft,
                 border: `1px solid ${meta.borderColor}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: 18,
-                fontSize: 22, color: meta.color, fontWeight: 700,
+                marginBottom: 20,
+                boxShadow: `inset 0 0 20px ${meta.color}11`,
               }}>
-                {sector.name.charAt(0)}
+                <SectorAnimation slug={sector.slug} size={56} color={meta.color} />
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 700, color: '#e2e8f0', marginBottom: 10, lineHeight: 1.3 }}>
                 {sector.name}
