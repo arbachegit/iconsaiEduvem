@@ -365,6 +365,7 @@ export default function LessonModal({
             <>
               <LessonView
                 lessonId={lessonId}
+                nrId={nrId}
                 nrCode={nrCode}
                 nrTitle={nrTitle}
                 sectorSlug={sectorSlug}
@@ -372,6 +373,7 @@ export default function LessonModal({
                 title={title}
                 sections={sections}
                 restLoading={restLoading}
+                generationElapsed={elapsed}
               />
 
               {/* Laboratorio anchor + render */}

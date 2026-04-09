@@ -6,7 +6,12 @@ import { SvgComprehensionCheck } from './education/SvgComprehensionCheck'
 import { TermModal, useTermModalStack } from './education/TermModal'
 import { getSectorMeta } from '@/lib/sectors-meta'
 import { NR_CONCEPTUAL_TERMS } from '@/data/domain-configs/nr'
+import { hasSimulation } from '@/lib/nr-simulations'
 import AudioPlayer from './AudioPlayer'
+import LabCallout from './LabCallout'
+
+// Termos clicaveis aparecem em laranja-warm pra contrastar com a cor do setor
+const TERM_COLOR = '#fb923c'
 
 export interface LessonSection {
   index: number
@@ -16,6 +21,7 @@ export interface LessonSection {
 
 interface LessonViewProps {
   lessonId: number
+  nrId: number
   nrCode: string
   nrTitle: string
   sectorSlug: string
@@ -23,10 +29,12 @@ interface LessonViewProps {
   title: string
   sections: LessonSection[]
   restLoading?: boolean
+  /** Quantos segundos a aula esta gerando — usado pelo LabCallout em modo loading */
+  generationElapsed?: number
 }
 
 export default function LessonView({
-  lessonId, nrCode, nrTitle, sectorSlug, sectorName, title, sections, restLoading = false,
+  lessonId, nrId, nrCode, nrTitle, sectorSlug, sectorName, title, sections, restLoading = false, generationElapsed = 0,
 }: LessonViewProps) {
   const [currentSection, setCurrentSection] = useState(1)
   const [comprehensionFeedback, setComprehensionFeedback] = useState<Record<number, boolean | undefined>>({})
@@ -102,6 +110,16 @@ export default function LessonView({
 
       {/* Main */}
       <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Lab callout banner — antes do conteudo */}
+        <LabCallout
+          color={accent}
+          state={hasSimulation(nrId) ? (restLoading ? 'loading' : 'ready') : 'unavailable'}
+          elapsed={generationElapsed}
+          onClick={() => {
+            document.getElementById('eduven-lab-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+        />
+
         {!active && restLoading && (
           <div style={{
             background: '#0c1320', border: '1px solid #1e293b', borderRadius: 12,
@@ -264,13 +282,14 @@ function renderMarkdownWithTerms(md: string, accentColor: string): string {
   html = html.replace(/(<li[^>]*>[\s\S]*?<\/li>(?:\s*<li[^>]*>[\s\S]*?<\/li>)*)/g, '<ul style="padding-left:24px;margin:12px 0">$1</ul>')
   html = html.split(/\n{2,}/).map(p => p.trim().startsWith('<') ? p : `<p style="margin:14px 0">${p}</p>`).join('\n')
 
-  // Clickable terms (NR_CONCEPTUAL_TERMS) — sorted by length desc para casar termos compostos primeiro
+  // Clickable terms — em LARANJA WARM pra contrastar com a cor do setor.
+  // Sorted by length desc para casar termos compostos primeiro.
   const sorted = [...NR_CONCEPTUAL_TERMS].sort((a, b) => b.length - a.length)
   for (const term of sorted) {
     const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const regex = new RegExp(`(?<!data-term-link=")(?<![\\w])${escaped}(?![\\w])`, 'gi')
     html = html.replace(regex, (match) =>
-      `<span data-term-link="${match}" style="color:${accentColor};cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;font-weight:600">${match}</span>`
+      `<span data-term-link="${match}" style="color:${TERM_COLOR};cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;text-decoration-color:${TERM_COLOR}66;font-weight:600;transition:all 0.15s">${match}</span>`
     )
   }
 
