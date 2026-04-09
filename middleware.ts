@@ -10,12 +10,18 @@ import { NextRequest, NextResponse } from 'next/server'
  * Skip list inclui webmanifest/json/txt/xml para evitar bug de CORS no
  * manifest (mesmo que ja foi descoberto e corrigido nos outros apps).
  */
+const AUTH_MODE = process.env.AUTH_MODE || 'tools'  // 'tools' | 'bypass'
 const TOOLS_VERIFY_URL = process.env.TOOLS_VERIFY_URL || 'https://icon.iconsai.ai/icon/api/tools-auth/verify'
 const TOOLS_LOGIN_URL = process.env.TOOLS_LOGIN_URL || 'https://icon.iconsai.ai/icon/tools?reason=auth'
 const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'course_session_eduven'
 const ADMIN_SESSION_COOKIE = process.env.ADMIN_SESSION_COOKIE_NAME || 'course_admin_session_eduven'
 
 export async function middleware(request: NextRequest) {
+  // Bypass total — usado em dev local. NUNCA usar em producao.
+  if (AUTH_MODE === 'bypass') {
+    return NextResponse.next()
+  }
+
   const { pathname } = request.nextUrl
 
   // Skip static assets, health, version, manifest, etc.
