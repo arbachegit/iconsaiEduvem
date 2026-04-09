@@ -24,14 +24,23 @@ import {
   NR_MODELS,
   NR_RAG_CONFIG,
   NR_DIFFICULTY_PROFILES,
+  LESSON_SECTIONS,
   type NRDifficulty,
   type SectorContext,
 } from '@/data/domain-configs/nr'
+import { enrichWithExercises, type EnrichedSection } from './exercise-generator'
 
 export interface LessonSection {
   index: number
   titlePt: string
   content: string
+  exerciseData?: {
+    prompt: string
+    exerciseType: string
+    expectedSolution: Record<string, unknown>
+    hints: string[]
+    difficultyScore: number
+  }
 }
 
 interface NRRow { id: number; code: string; title: string; status: string }
@@ -58,7 +67,8 @@ export interface LessonFastResult {
 
 export interface LessonRestResult {
   lessonId: number
-  sections: LessonSection[]   // secoes 2-6
+  sections: EnrichedSection[]           // secoes 2-6 (4 e 6 com exerciseData)
+  exerciseIds: Record<number, number>   // { 4: id, 6: id }
   ragChunksUsed: number[]
   provider: 'anthropic' | 'openai' | 'unknown'
   generationMs: number
@@ -277,9 +287,9 @@ Gere AGORA as secoes 2, 3, 4, 5 e 6, mantendo continuidade tonal. TODO exemplo d
 
   const provider = getProvider(response)
   const rawText = extractText(response)
-  let parsed: { sections: LessonSection[] }
+  let parsed: { sections: Array<Partial<LessonSection> & { exerciseData?: unknown }> }
   try {
-    parsed = safeParseJSON(rawText) as { sections: LessonSection[] }
+    parsed = safeParseJSON(rawText) as typeof parsed
   } catch (e) {
     console.error('[lesson-rest] JSON parse failed. Raw response (first 500 chars):', rawText.slice(0, 500))
     throw new Error(`lesson-rest: JSON parse error — ${(e as Error).message}`)
@@ -290,20 +300,40 @@ Gere AGORA as secoes 2, 3, 4, 5 e 6, mantendo continuidade tonal. TODO exemplo d
     throw new Error('lesson-rest: response missing sections array')
   }
 
-  // Aceita 4-6 secoes (modelo as vezes corta a 6 ou inclui 1 extra). Filtra so 2-6.
-  parsed.sections = parsed.sections
-    .filter(s => s && typeof s.index === 'number' && s.index >= 2 && s.index <= 6 && s.content)
-    .sort((a, b) => a.index - b.index)
+  // ═══ KEYWORD MAPPING (canon iconsaiStats) ═══
+  // Claude as vezes inventa titulos extras ou troca a ordem. NUNCA confiar em
+  // posicao cega. Mapeamento por keyword pra slots 2-6, com fallback posicional.
+  const rawInputs = parsed.sections.filter(s => s && typeof s.content === 'string' && s.content.trim())
+  const mappedSlots = mapSectionsByKeyword(rawInputs)
 
-  if (parsed.sections.length === 0) {
+  // Force canonical titles (sobrescreve o que o Claude escreveu)
+  const canonicalSections: EnrichedSection[] = mappedSlots.map((raw, i) => {
+    const canonIdx = i + 2 // slots 0..4 → indexes 2..6
+    const canonMeta = LESSON_SECTIONS.find(s => s.index === canonIdx)!
+    return {
+      index: canonIdx,
+      titlePt: canonMeta.titlePt, // forca canonico
+      content: String(raw.content || ''),
+      // preserva exerciseData inline se veio (level 2 do fallback)
+      exerciseData: (raw as { exerciseData?: Record<string, unknown> }).exerciseData as EnrichedSection['exerciseData'],
+    }
+  })
+
+  if (canonicalSections.length === 0) {
     throw new Error(`lesson-rest: nenhuma secao 2-6 valida no JSON retornado`)
   }
-  if (parsed.sections.length < 5) {
-    console.warn(`[lesson-rest] aviso: recebeu ${parsed.sections.length} secoes (esperava 5). Continuando.`)
-  }
 
-  // Junta secao1 + secoes 2-6 e atualiza o lesson
-  const fullSections = [...lesson.sections, ...parsed.sections]
+  // ═══ ENRICH WITH EXERCISES (canon iconsaiStats) ═══
+  // Secoes 4 e 6 SEMPRE terao exerciseData + exerciseId (3-level fallback).
+  const { sections: enrichedSections, exerciseIds } = await enrichWithExercises(
+    lesson.id,
+    canonicalSections,
+    nr.code,
+    sector.name
+  )
+
+  // Junta secao1 + secoes 2-6 enriched e atualiza o lesson
+  const fullSections = [...lesson.sections, ...enrichedSections]
   const newRagUsed = Array.from(new Set([...lesson.rag_chunks_used, ...rag.chunks.map(c => c.id)]))
 
   const { error: upErr } = await db
@@ -314,9 +344,60 @@ Gere AGORA as secoes 2, 3, 4, 5 e 6, mantendo continuidade tonal. TODO exemplo d
 
   return {
     lessonId: lesson.id,
-    sections: parsed.sections,
+    sections: enrichedSections,
+    exerciseIds,
     ragChunksUsed: newRagUsed,
     provider,
     generationMs: Date.now() - t0,
   }
+}
+
+/**
+ * Keyword mapping pras 5 secoes (2-6) do lesson-rest.
+ * Canon iconsaiStats: nunca confiar em posicao cega no array do Claude.
+ *
+ * Ordem dos slots:
+ *   slot 0 (→ index 2) — 'Entendendo na prática' — keywords: entend, pratica
+ *   slot 1 (→ index 3) — 'Passo a passo'          — keywords: passo
+ *   slot 2 (→ index 4) — 'Exemplo'                — keywords: exemplo, aplicacao, caso
+ *   slot 3 (→ index 5) — 'Pontos fortes'          — keywords: ponto, forte, destaque
+ *   slot 4 (→ index 6) — 'Desafio Prático'        — keywords: desafio, pratico
+ */
+function mapSectionsByKeyword<T extends { titlePt?: string; content?: string }>(inputs: T[]): T[] {
+  const matchers: Array<(s: string) => boolean> = [
+    (s) => /entend|prática|pratica/i.test(s),
+    (s) => /passo/i.test(s),
+    (s) => /exemplo|aplicac|caso/i.test(s),
+    (s) => /ponto|forte|destaque/i.test(s),
+    (s) => /desafio|prático|pratico/i.test(s),
+  ]
+
+  const slots: (T | null)[] = [null, null, null, null, null]
+  const unclaimed = new Set(inputs.map((_, i) => i))
+
+  // Primeira passada: match por titulo (mais confiavel)
+  for (let slotIdx = 0; slotIdx < 5; slotIdx++) {
+    const match = matchers[slotIdx]
+    for (const i of unclaimed) {
+      const title = (inputs[i].titlePt || '').toLowerCase()
+      if (title && match(title)) {
+        slots[slotIdx] = inputs[i]
+        unclaimed.delete(i)
+        break
+      }
+    }
+  }
+
+  // Segunda passada: fallback posicional pros slots vazios
+  const remainder = [...unclaimed].sort((a, b) => a - b)
+  for (let slotIdx = 0; slotIdx < 5; slotIdx++) {
+    if (slots[slotIdx] !== null) continue
+    const next = remainder.shift()
+    if (next !== undefined) {
+      slots[slotIdx] = inputs[next]
+    }
+  }
+
+  // Remove slots ainda vazios (casos extremos)
+  return slots.filter((s): s is T => s !== null)
 }

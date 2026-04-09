@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { X, Sparkles, Sprout, Mountain, Flame, Skull } from 'lucide-react'
 import LessonView, { type LessonSection } from './LessonView'
-import SimulationLab from './SimulationLab'
 import { getSectorMeta } from '@/lib/sectors-meta'
 
 /* ═══════════════════════════════════════════════════════════
@@ -69,6 +68,7 @@ export default function LessonModal({
   const [title, setTitle] = useState('')
   const [sections, setSections] = useState<LessonSection[]>([])
   const [lessonId, setLessonId] = useState(0)
+  const [exerciseIds, setExerciseIds] = useState<Record<number, number>>({})
   const [stage1Loading, setStage1Loading] = useState(false)
   const [restLoading, setRestLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -115,6 +115,7 @@ export default function LessonModal({
     setError(null)
     setSections([])
     setTitle('')
+    setExerciseIds({})
     setStage1Loading(true)
 
     try {
@@ -145,6 +146,7 @@ export default function LessonModal({
       if (!restRes.ok) throw new Error(restJson?.error || 'Falha ao gerar restante da aula')
 
       setSections(prev => [...prev, ...(restJson.sections || [])])
+      if (restJson.exerciseIds) setExerciseIds(restJson.exerciseIds)
       setRestLoading(false)
     } catch (e) {
       if (generationRef.current !== genId) return
@@ -344,31 +346,23 @@ export default function LessonModal({
           )}
 
           {sections.length > 0 && (
-            <>
-              <LessonView
-                lessonId={lessonId}
-                nrId={nrId}
-                nrCode={nrCode}
-                nrTitle={nrTitle}
-                sectorSlug={sectorSlug}
-                sectorName={sectorName}
-                title={title}
-                sections={sections}
-                restLoading={restLoading}
-                generationElapsed={elapsed}
-              />
-
-              {/* Laboratorio anchor + render */}
-              <div id="eduven-lab-anchor" style={{ marginTop: 40 }}>
-                <SimulationLab
-                  nrId={nrId}
-                  nrCode={nrCode}
-                  nrTitle={nrTitle}
-                  accentColor={accent}
-                />
-              </div>
-            </>
+            <LessonView
+              lessonId={lessonId}
+              nrId={nrId}
+              nrCode={nrCode}
+              nrTitle={nrTitle}
+              sectorSlug={sectorSlug}
+              sectorName={sectorName}
+              title={title}
+              sections={sections}
+              exerciseIds={exerciseIds}
+              restLoading={restLoading}
+              generationElapsed={elapsed}
+            />
           )}
+          {/* Canon iconsaiStats: unica chamada do laboratorio e o LabCallout
+              renderizado DENTRO do LessonView, no topo do content. Nao ha
+              SimulationLab renderizado no fim do modal. */}
         </div>
       </div>
 

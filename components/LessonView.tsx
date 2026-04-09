@@ -17,6 +17,13 @@ export interface LessonSection {
   index: number
   titlePt: string
   content: string
+  exerciseData?: {
+    prompt: string
+    exerciseType: string
+    expectedSolution: Record<string, unknown>
+    hints: string[]
+    difficultyScore: number
+  }
 }
 
 interface LessonViewProps {
@@ -28,13 +35,14 @@ interface LessonViewProps {
   sectorName: string
   title: string
   sections: LessonSection[]
+  exerciseIds?: Record<number, number>   // { 4: 101, 6: 102 } — do lesson-rest
   restLoading?: boolean
   /** Quantos segundos a aula esta gerando — usado pelo LabCallout em modo loading */
   generationElapsed?: number
 }
 
 export default function LessonView({
-  lessonId, nrId, nrCode, nrTitle, sectorSlug, sectorName, title, sections, restLoading = false, generationElapsed = 0,
+  lessonId, nrId, nrCode, nrTitle, sectorSlug, sectorName, title, sections, exerciseIds = {}, restLoading = false, generationElapsed = 0,
 }: LessonViewProps) {
   const [currentSection, setCurrentSection] = useState(1)
   const [comprehensionFeedback, setComprehensionFeedback] = useState<Record<number, boolean | undefined>>({})
@@ -110,14 +118,13 @@ export default function LessonView({
 
       {/* Main */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Lab callout banner — antes do conteudo */}
+        {/* Lab callout banner — antes do conteudo. Canon iconsaiStats:
+            unica chamada do laboratorio. Quando simulacao existir (Fase C+),
+            o banner expandira e renderizara a sim inline. */}
         <LabCallout
           color={accent}
           state={hasSimulation(nrId) ? (restLoading ? 'loading' : 'ready') : 'unavailable'}
           elapsed={generationElapsed}
-          onClick={() => {
-            document.getElementById('eduven-lab-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }}
         />
 
         {!active && restLoading && (
@@ -165,6 +172,48 @@ export default function LessonView({
               }}
               dangerouslySetInnerHTML={{ __html: renderMarkdownWithTerms(active.content, accent) }}
             />
+
+            {/* Exercise placeholder (secoes 4 e 6) — ExerciseWindow real vira na Fase C */}
+            {active.exerciseData && exerciseIds[active.index] && (
+              <div style={{
+                background: '#0c1320',
+                border: `1px solid ${accent}66`,
+                borderRadius: 12,
+                padding: '24px 28px',
+                marginTop: 20,
+                boxShadow: `0 0 24px ${accent}22`,
+              }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: accent,
+                  textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12,
+                }}>
+                  Exercício interativo — #{exerciseIds[active.index]}
+                </div>
+                <div style={{
+                  fontSize: 15, color: '#e2e8f0', lineHeight: 1.7, marginBottom: 14,
+                }}>
+                  {active.exerciseData.prompt}
+                </div>
+                {active.exerciseData.hints && active.exerciseData.hints.length > 0 && (
+                  <details style={{ fontSize: 13, color: '#94a3b8', marginBottom: 10 }}>
+                    <summary style={{ cursor: 'pointer', color: accent, fontWeight: 600 }}>
+                      Ver dicas ({active.exerciseData.hints.length})
+                    </summary>
+                    <ul style={{ paddingLeft: 20, marginTop: 8 }}>
+                      {active.exerciseData.hints.map((h, i) => (
+                        <li key={i} style={{ marginBottom: 4 }}>{h}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+                <div style={{
+                  fontSize: 11, color: '#64748b', marginTop: 12, fontStyle: 'italic',
+                }}>
+                  Tipo: {active.exerciseData.exerciseType} · Dificuldade: {Math.round((active.exerciseData.difficultyScore || 0.5) * 100)}%
+                  {' · '}Input do aluno e avaliacao vem na proxima fase.
+                </div>
+              </div>
+            )}
 
             {/* Comprehension check (sempre, exceto secao 6) */}
             {active.index < 6 && (
