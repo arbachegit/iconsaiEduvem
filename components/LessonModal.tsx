@@ -240,7 +240,7 @@ export default function LessonModal({
         }}>
           {/* Logo i.ai a esquerda do titulo */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/i.ai.svg" alt="i.ai" style={{ height: 36, width: 36, flexShrink: 0 }} />
+          <img src="/i.ai.svg" alt="i.ai" style={{ height: 40, width: 40, flexShrink: 0 }} />
 
           {/* Titulo */}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -333,7 +333,7 @@ export default function LessonModal({
           <img
             src="/ait.svg"
             alt="Learn by ai.t tutor"
-            style={{ height: 32, flexShrink: 0, opacity: 0.9 }}
+            style={{ height: 36, flexShrink: 0, opacity: 0.9 }}
             title="Learn by ai.t tutor"
           />
 
