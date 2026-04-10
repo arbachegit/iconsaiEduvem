@@ -20,14 +20,20 @@ export type RiskGrade = 'Baixo' | 'Médio' | 'Alto' | 'Crítico'
 export interface ProtectionItem {
   id: EpiType
   label: string
+  /** Nome completo do equipamento (ex: "Capacete classe B com jugular") */
+  fullName?: string
+  /** Por que esse item importa — 1 frase (ex: "Protege contra impacto de objetos em queda") */
+  description?: string
+  /** Norma de referencia (ex: "NR-6, Anexo I") */
+  normRef?: string
   workerProp?: keyof Pick<WorkerProps, 'helmet' | 'gloves' | 'boots' | 'harness' | 'mask' | 'goggles' | 'earProtection' | 'apron'>
   risksRemoved?: (keyof WorkerRisks)[]
-  riskReduction: number          // 0-25 (reducao no risco fatal %)
-  complianceWeight: number       // 0-25 (contribuicao pra compliance %)
-  lifeYearsAdded: number         // 0-6 (anos na expectativa de vida)
-  fineReduction: number          // R$ (quanto a multa cai com esse item)
-  tutorAdded: string             // ai.tutor quando ativado
-  tutorRemoved: string           // ai.tutor quando desativado
+  riskReduction: number
+  complianceWeight: number
+  lifeYearsAdded: number
+  fineReduction: number
+  tutorAdded: string
+  tutorRemoved: string
 }
 
 export interface WorkerLabConfig {
@@ -353,7 +359,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
               )}
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {items.map(item => {
                 const isActive = selected.has(item.id)
                 const itemColor = isActive ? ACCENT : '#475569'
@@ -361,28 +367,48 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
                   <button
                     key={item.id}
                     onClick={() => toggle(item.id)}
-                    title={item.label}
+                    title={item.fullName || item.label}
                     style={{
-                      display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', gap: 4,
-                      padding: '8px 10px', borderRadius: 10,
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 12px', borderRadius: 10,
                       border: `2px solid ${isActive ? ACCENT : '#1e293b'}`,
-                      background: isActive ? `${ACCENT}1A` : 'transparent',
+                      background: isActive ? `${ACCENT}0D` : 'transparent',
                       cursor: 'pointer',
                       opacity: isActive ? 1 : 0.5,
                       transition: 'all 0.2s',
-                      minWidth: 60,
-                      boxShadow: isActive ? `0 0 12px ${ACCENT}44` : 'none',
+                      width: '100%', textAlign: 'left',
+                      boxShadow: isActive ? `0 0 10px ${ACCENT}33` : 'none',
                       fontFamily: 'inherit',
                     }}
                   >
-                    <EpiIcon type={item.id} color={itemColor} size={28} />
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, color: itemColor,
-                      textTransform: 'uppercase', letterSpacing: 0.5,
+                    <div style={{ flexShrink: 0 }}>
+                      <EpiIcon type={item.id} color={itemColor} size={26} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 11, fontWeight: 700, color: isActive ? '#e2e8f0' : '#94a3b8',
+                        lineHeight: 1.2,
+                      }}>
+                        {item.fullName || item.label}
+                      </div>
+                      {item.description && (
+                        <div style={{
+                          fontSize: 9, color: '#64748b', lineHeight: 1.3, marginTop: 2,
+                        }}>
+                          {item.description}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{
+                      flexShrink: 0, width: 18, height: 18, borderRadius: 4,
+                      border: `1.5px solid ${isActive ? ACCENT : '#334155'}`,
+                      background: isActive ? ACCENT : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, color: isActive ? '#050d1a' : 'transparent',
+                      fontWeight: 900,
                     }}>
-                      {item.label}
-                    </span>
+                      ✓
+                    </div>
                   </button>
                 )
               })}

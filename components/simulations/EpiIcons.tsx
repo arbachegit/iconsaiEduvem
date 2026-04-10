@@ -6,7 +6,7 @@
  */
 
 export type EpiType =
-  | 'none'           // Sem protecao (icone de pessoa sem nada)
+  | 'none'           // Sem protecao
   | 'helmet'         // Capacete
   | 'gloves'         // Luvas
   | 'boots'          // Botas
@@ -15,12 +15,19 @@ export type EpiType =
   | 'goggles'        // Oculos de protecao
   | 'earProtection'  // Protetor auricular
   | 'apron'          // Avental
-  | 'extinguisher'   // Extintor (NRs de incendio)
-  | 'lockout'        // Bloqueio eletrico (NR-10)
-  | 'gasDetector'    // Detector de gas (NR-33)
-  | 'lifeVest'       // Colete salva-vidas (maritimo)
-  | 'signaling'      // Sinalizacao (NR-26)
+  | 'extinguisher'   // Extintor
+  | 'lockout'        // Bloqueio eletrico
+  | 'gasDetector'    // Detector de gas
+  | 'lifeVest'       // Colete salva-vidas
+  | 'signaling'      // Sinalizacao
   | 'firstAid'       // Primeiro socorros
+  // ERGONOMICOS (escritorio/admin)
+  | 'ergonomicChair' // Cadeira ergonomica
+  | 'lighting'       // Iluminacao adequada
+  | 'breaks'         // Pausas programadas
+  | 'periodicExam'   // Exame periodico (PCMSO)
+  | 'wristSupport'   // Apoio de pulso
+  | 'monitorStand'   // Suporte de monitor
 
 interface IconProps {
   color: string
@@ -44,6 +51,12 @@ export function EpiIcon({ type, color, size = 24 }: IconProps & { type: EpiType 
     lifeVest: LifeVestIcon,
     signaling: SignalingIcon,
     firstAid: FirstAidIcon,
+    ergonomicChair: ChairIcon,
+    lighting: LightIcon,
+    breaks: BreaksIcon,
+    periodicExam: ExamIcon,
+    wristSupport: WristIcon,
+    monitorStand: MonitorIcon,
   }
   const Icon = icons[type] || NoneIcon
   return <Icon color={color} size={size} />
@@ -182,5 +195,72 @@ function FirstAidIcon({ color, size = 24 }: IconProps) {
     <rect x="4" y="4" width="16" height="16" rx="2" fill={`${color}22`} stroke={color} strokeWidth="1.8"/>
     <rect x="10" y="7" width="4" height="10" fill={color}/>
     <rect x="7" y="10" width="10" height="4" fill={color}/>
+  </S>
+}
+
+/* ─── ERGONOMICOS ─── */
+
+function ChairIcon({ color, size = 24 }: IconProps) {
+  return <S size={size}>
+    <path d="M 8 6 Q 8 3 12 3 Q 16 3 16 6 L 16 10 L 8 10 Z" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
+    <rect x="7" y="10" width="10" height="3" rx="0.5" fill={color} opacity="0.7"/>
+    <line x1="12" y1="13" x2="12" y2="18" stroke={color} strokeWidth="2"/>
+    <line x1="8" y1="18" x2="16" y2="18" stroke={color} strokeWidth="1.5"/>
+    <circle cx="9" cy="20" r="1.5" fill={color} opacity="0.6"/>
+    <circle cx="15" cy="20" r="1.5" fill={color} opacity="0.6"/>
+  </S>
+}
+
+function LightIcon({ color, size = 24 }: IconProps) {
+  return <S size={size}>
+    <circle cx="12" cy="10" r="5" fill={`${color}33`} stroke={color} strokeWidth="1.8"/>
+    <line x1="12" y1="2" x2="12" y2="4" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <line x1="4" y1="10" x2="6" y2="10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <line x1="18" y1="10" x2="20" y2="10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <line x1="6.5" y1="4.5" x2="8" y2="6" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <line x1="17.5" y1="4.5" x2="16" y2="6" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <rect x="10" y="16" width="4" height="3" rx="0.5" fill={color} opacity="0.7"/>
+    <text x="12" y="21" fontSize="4" fill={color} textAnchor="middle" fontWeight="700">lux</text>
+  </S>
+}
+
+function BreaksIcon({ color, size = 24 }: IconProps) {
+  return <S size={size}>
+    <circle cx="12" cy="12" r="9" fill="none" stroke={color} strokeWidth="1.8"/>
+    <line x1="12" y1="5" x2="12" y2="12" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    <line x1="12" y1="12" x2="17" y2="14" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    <circle cx="12" cy="12" r="1.5" fill={color}/>
+  </S>
+}
+
+function ExamIcon({ color, size = 24 }: IconProps) {
+  return <S size={size}>
+    <rect x="6" y="2" width="12" height="18" rx="1.5" fill={`${color}22`} stroke={color} strokeWidth="1.5"/>
+    <line x1="9" y1="7" x2="15" y2="7" stroke={color} strokeWidth="1" opacity="0.6"/>
+    <line x1="9" y1="10" x2="15" y2="10" stroke={color} strokeWidth="1" opacity="0.6"/>
+    <line x1="9" y1="13" x2="13" y2="13" stroke={color} strokeWidth="1" opacity="0.6"/>
+    <path d="M 9 16 l 2 2 l 4 -4" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+  </S>
+}
+
+function WristIcon({ color, size = 24 }: IconProps) {
+  return <S size={size}>
+    <rect x="3" y="12" width="18" height="4" rx="1" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
+    <path d="M 8 12 L 8 7 Q 8 5 10 5 L 14 5 Q 16 5 16 7 L 16 12" fill="none" stroke={color} strokeWidth="1.5"/>
+    <circle cx="10" cy="8" r="0.8" fill={color}/>
+    <circle cx="12" cy="7" r="0.8" fill={color}/>
+    <circle cx="14" cy="8" r="0.8" fill={color}/>
+    <line x1="12" y1="16" x2="12" y2="20" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+  </S>
+}
+
+function MonitorIcon({ color, size = 24 }: IconProps) {
+  return <S size={size}>
+    <rect x="3" y="4" width="18" height="12" rx="1.5" fill={`${color}22`} stroke={color} strokeWidth="1.5"/>
+    <rect x="5" y="6" width="14" height="8" rx="0.5" fill={`${color}11`}/>
+    <rect x="10" y="16" width="4" height="3" fill={color} opacity="0.6"/>
+    <rect x="7" y="19" width="10" height="1.5" rx="0.5" fill={color} opacity="0.7"/>
+    <line x1="12" y1="2" x2="12" y2="4" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <line x1="10" y1="2" x2="14" y2="2" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
   </S>
 }

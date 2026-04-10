@@ -495,25 +495,74 @@ function genericMachine(o: GenericOpts): WorkerLabConfig {
 }
 
 /** ESCRITORIO/ADMINISTRATIVO — poucos EPIs, foco em postura e conformidade documental. */
+/** ESCRITORIO/ADMINISTRATIVO — SEM EPIs fisicos. Foco: ergonomia, iluminacao, pausas, exames. */
 function genericOffice(o: GenericOpts): WorkerLabConfig {
   return {
-    sliderLabel: 'Conformidade documental e ergonômica',
+    sliderLabel: 'Adequação ergonômica',
     sliderTicks: ['Irregular', 'Básico', 'Documentado', 'Conforme'],
     defaultBackground: 'office',
-    levels: [
-      { label: 'Irregular', worker: { mood: 0, risks: { bodyImpact: true }, backgroundHint: 'office' },
-        stats: { riskGrade: 'Alto', fatalRisk: 8, compliance: 0, fineEstimate: 2800, lifeExpectancy: 65 },
-        tutor: { headline: `${o.nrCode} não é só chão de fábrica — escritório também.`, detail: `${o.topic}: ${o.criticalStat} [${o.keyCite}].`, warning: 'Fiscal inclui escritórios na inspeção. Não é imune.' } },
-      { label: 'Básico', worker: { mood: 0.4, boots: true, backgroundHint: 'office' },
-        stats: { riskGrade: 'Médio', fatalRisk: 5, compliance: 35, fineEstimate: 1400, lifeExpectancy: 70 },
-        tutor: { headline: 'Tem o mínimo mas sem documentação.', detail: `Cadeira ajustável, iluminação, mas sem registro formal [${o.keyCite}].` } },
-      { label: 'Documentado', worker: { mood: 0.75, boots: true, goggles: true, backgroundHint: 'office' },
-        stats: { riskGrade: 'Baixo', fatalRisk: 2, compliance: 75, fineEstimate: 400, lifeExpectancy: 75 },
-        tutor: { headline: 'Procedimentos escritos + treinamento registrado.', detail: `Documentação em dia, PGR atualizado, treinamentos [${o.keyCite}].` } },
-      { label: 'Conforme', worker: { mood: 1, boots: true, backgroundHint: 'office' },
-        stats: { riskGrade: 'Baixo', fatalRisk: 1, compliance: 100, fineEstimate: 0, lifeExpectancy: 78 },
-        tutor: { headline: 'Tudo conforme, tudo documentado.', detail: `${o.nrCode} cumprida. Auditor verifica papelada e libera.` } },
+    items: [
+      {
+        id: 'ergonomicChair', label: 'Cadeira',
+        fullName: 'Cadeira ergonômica com regulagem de altura e apoio lombar',
+        description: 'Previne dor lombar e hérnia de disco — obrigatória pela NR-17.',
+        normRef: 'NR-17, item 17.3.3',
+        risksRemoved: ['bodyImpact'],
+        riskReduction: 3, complianceWeight: 20, lifeYearsAdded: 2, fineReduction: 600,
+        tutorAdded: 'Cadeira certa corta 60% das queixas de lombalgia no escritório.',
+        tutorRemoved: 'Sem cadeira ergonômica, a coluna paga a conta em 2 anos.',
+      },
+      {
+        id: 'monitorStand', label: 'Monitor',
+        fullName: 'Suporte de monitor na altura dos olhos',
+        description: 'Evita dor cervical e fadiga visual. Tela deve ficar a 50-75cm dos olhos.',
+        normRef: 'NR-17, item 17.3.5',
+        riskReduction: 2, complianceWeight: 15, lifeYearsAdded: 1, fineReduction: 400,
+        tutorAdded: 'Monitor na altura certa = pescoço reto. Evita cirurgia cervical.',
+        tutorRemoved: 'Monitor baixo = cabeça inclinada 8h/dia. Dor cervical crônica em 6 meses.',
+      },
+      {
+        id: 'lighting', label: 'Iluminação',
+        fullName: 'Iluminação adequada — mínimo 500 lux na mesa',
+        description: 'Luz insuficiente causa fadiga visual, miopia progressiva e cefaleia.',
+        normRef: 'NR-17, item 17.5.3',
+        riskReduction: 2, complianceWeight: 15, lifeYearsAdded: 1, fineReduction: 400,
+        tutorAdded: 'Com 500 lux a fadiga visual cai pela metade e a produtividade sobe 15%.',
+        tutorRemoved: 'Sem iluminação adequada, o olho força demais. Miopia e cefaleia garantidos.',
+      },
+      {
+        id: 'breaks', label: 'Pausas',
+        fullName: 'Pausas programadas de 10 min a cada 50 min',
+        description: 'Reduz LER/DORT (Lesão por Esforço Repetitivo), fadiga mental e risco cardiovascular.',
+        normRef: 'NR-17, item 17.6.3',
+        riskReduction: 2, complianceWeight: 20, lifeYearsAdded: 3, fineReduction: 500,
+        tutorAdded: 'Pausa de 10 min a cada 50 min corta LER/DORT em 40%. E melhora concentração.',
+        tutorRemoved: 'Sem pausa, o punho inflama, o ombro trava, a produtividade despenca depois das 14h.',
+      },
+      {
+        id: 'periodicExam', label: 'Exame',
+        fullName: 'Exame médico periódico — PCMSO (NR-7)',
+        description: `PCMSO = Programa de Controle Médico de Saúde Ocupacional. Detecta LER, problemas visuais e estresse ANTES de virarem afastamento. ${o.keyCite ? '[' + o.keyCite + ']' : ''}`,
+        normRef: 'NR-7, item 7.4.1 — NR-7 é o PCMSO, obrigatório pra TODA empresa com empregados CLT.',
+        riskReduction: 2, complianceWeight: 20, lifeYearsAdded: 4, fineReduction: 700,
+        tutorAdded: 'Exame periódico pega o problema quando ainda é reversível. Sem ele, só descobre na invalidez.',
+        tutorRemoved: 'Sem PCMSO, o funcionário descobre a LER quando já não consegue digitar.',
+      },
+      {
+        id: 'wristSupport', label: 'Apoio de pulso',
+        fullName: 'Apoio de pulso ergonômico para teclado e mouse',
+        description: 'Previne Síndrome do Túnel do Carpo e tendinite. Custo: R$ 30. Cirurgia: R$ 15 mil.',
+        normRef: 'NR-17, item 17.3',
+        risksRemoved: ['handCuts'],
+        riskReduction: 1, complianceWeight: 10, lifeYearsAdded: 1, fineReduction: 300,
+        tutorAdded: 'R$ 30 de apoio de pulso evita R$ 15 mil de cirurgia + 3 meses de afastamento.',
+        tutorRemoved: 'Sem apoio, o pulso flexiona 15° a mais que o ideal. Em 2 anos vira tendinite.',
+      },
     ],
+    baseStats: { riskFatal: 12, compliance: 0, fineEstimate: 2800, lifeExpectancy: 65 },
+    baseRisks: { bodyImpact: true, handCuts: true },
+    tutorEmpty: `${o.nrCode} não é só chão de fábrica. Escritório sem ergonomia gera LER, miopia, depressão por prazo, burnout — e a empresa paga a conta. ${o.criticalStat} [${o.keyCite}].`,
+    tutorFull: 'Ambiente ergonômico completo: cadeira, monitor, luz, pausas, exame periódico, apoio de pulso. Não é luxo — é o mínimo da NR-17. E o funcionário produz mais, adoece menos, fica mais tempo.',
   }
 }
 
