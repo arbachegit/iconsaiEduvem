@@ -1,84 +1,244 @@
 'use client'
 
-import { useState } from 'react'
-import { Bot, AlertTriangle, ShieldCheck, Heart, Clock } from 'lucide-react'
+import { useState, useMemo, useCallback } from 'react'
+import { Bot, AlertTriangle, ShieldCheck, Heart } from 'lucide-react'
 import PlayButton from '../education/PlayButton'
-import WorkerSVG, { type WorkerProps } from './WorkerSVG'
+import WorkerSVG, { type WorkerProps, type WorkerRisks } from './WorkerSVG'
+import { EpiIcon, type EpiType } from './EpiIcons'
 
 /* ═══════════════════════════════════════════════════════════
-   WorkerLab — template generico pra laboratorios com trabalhador.
+   WorkerLab — laboratorio interativo com BOTOES TOGGLE DE EPI.
 
-   Recebe uma config com 4 niveis (0..3). Cada nivel descreve:
-   - Estado do worker (EPIs, riscos, mood)
-   - Stats (grau de risco, risco fatal, conformidade, multa, expectativa de vida)
-   - Fala do ai.tutor (headline, detail, warning, suggestion)
-
-   A mesma UI (slider + SVG + stats + ai.tutor) serve pra todas
-   as NRs que tem 'trabalhador em risco'.
+   Em vez de slider linear, o aluno escolhe QUAIS EPIs/medidas
+   de protecao ativar. Começa tudo desligado (estado "sem EPI").
+   Cada toggle muda o trabalhador SVG, as stats e o ai.tutor.
    ═══════════════════════════════════════════════════════════ */
 
 export type RiskGrade = 'Baixo' | 'Médio' | 'Alto' | 'Crítico'
 
-export interface LabLevel {
+export interface ProtectionItem {
+  id: EpiType
   label: string
-  worker: Partial<WorkerProps>
-  stats: {
-    riskGrade?: RiskGrade
-    fatalRisk?: number           // 0-100 %
-    compliance?: number          // 0-100 %
-    fineEstimate?: number        // R$
-    lifeExpectancy?: number      // anos (impacto esperado na expectativa de vida)
-  }
-  tutor: {
-    headline: string
-    detail: string
-    warning?: string
-    suggestion?: string
-  }
+  workerProp?: keyof Pick<WorkerProps, 'helmet' | 'gloves' | 'boots' | 'harness' | 'mask' | 'goggles' | 'earProtection' | 'apron'>
+  risksRemoved?: (keyof WorkerRisks)[]
+  riskReduction: number          // 0-25 (reducao no risco fatal %)
+  complianceWeight: number       // 0-25 (contribuicao pra compliance %)
+  lifeYearsAdded: number         // 0-6 (anos na expectativa de vida)
+  fineReduction: number          // R$ (quanto a multa cai com esse item)
+  tutorAdded: string             // ai.tutor quando ativado
+  tutorRemoved: string           // ai.tutor quando desativado
 }
 
 export interface WorkerLabConfig {
-  sliderLabel: string           // ex: "Nivel de EPI", "Altura de trabalho", etc
-  sliderTicks: string[]         // ex: ["Nenhum","Capacete","+Luvas","Completo"]
+  sliderLabel?: string           // legado, ignorado na nova UI
+  sliderTicks?: string[]         // legado, ignorado
   defaultBackground?: WorkerProps['backgroundHint']
-  levels: [LabLevel, LabLevel, LabLevel, LabLevel]   // exatamente 4 niveis
+  /** NOVO: itens de protecao disponiveis como botoes toggle */
+  items?: ProtectionItem[]
+  /** Base stats quando ZERO itens selecionados */
+  baseStats?: {
+    riskFatal: number
+    compliance: number
+    fineEstimate: number
+    lifeExpectancy: number
+  }
+  /** Riscos visuais quando ZERO protecao */
+  baseRisks?: WorkerRisks
+  /** ai.tutor quando zero protecao */
+  tutorEmpty?: string
+  /** ai.tutor quando tudo selecionado */
+  tutorFull?: string
+  /** LEGADO: levels (backward compat — converte pra items on the fly) */
+  levels?: Array<{
+    label: string
+    worker: Partial<WorkerProps>
+    stats: {
+      riskGrade?: RiskGrade
+      fatalRisk?: number
+      compliance?: number
+      fineEstimate?: number
+      lifeExpectancy?: number
+    }
+    tutor: {
+      headline: string
+      detail: string
+      warning?: string
+      suggestion?: string
+    }
+  }>
 }
 
 const ACCENT = '#22d3ee'
 
+const RISK_GRADE = (risk: number): RiskGrade =>
+  risk >= 60 ? 'Crítico' : risk >= 35 ? 'Alto' : risk >= 15 ? 'Médio' : 'Baixo'
+
 const RISK_COLOR: Record<RiskGrade, string> = {
-  'Baixo':    '#4ade80',
-  'Médio':    '#fbbf24',
-  'Alto':     '#f97316',
-  'Crítico':  '#ef4444',
+  'Baixo': '#4ade80',
+  'Médio': '#fbbf24',
+  'Alto': '#f97316',
+  'Crítico': '#ef4444',
+}
+
+/** Gera items default a partir dos levels legados */
+function itemsFromLevels(config: WorkerLabConfig): ProtectionItem[] {
+  const levels = config.levels
+  if (!levels || levels.length < 4) return []
+
+  // Detecta quais equipamentos aparecem nas progressoes
+  const allProps: Array<keyof Pick<WorkerProps, 'helmet' | 'gloves' | 'boots' | 'harness' | 'mask' | 'goggles' | 'earProtection' | 'apron'>> =
+    ['helmet', 'gloves', 'boots', 'harness', 'mask', 'goggles', 'earProtection', 'apron']
+
+  const usedProps = allProps.filter(p =>
+    levels.some(l => (l.worker as Record<string, unknown>)[p])
+  )
+
+  const riskDrop = (levels[0].stats.fatalRisk || 80) - (levels[3].stats.fatalRisk || 5)
+  const perItem = usedProps.length > 0 ? riskDrop / usedProps.length : 20
+
+  const complianceTotal = levels[3].stats.compliance || 100
+  const perItemComp = usedProps.length > 0 ? complianceTotal / usedProps.length : 25
+
+  const fineTotal = (levels[0].stats.fineEstimate || 4000) - (levels[3].stats.fineEstimate || 0)
+  const perItemFine = usedProps.length > 0 ? fineTotal / usedProps.length : 1000
+
+  const lifeTotal = (levels[3].stats.lifeExpectancy || 77) - (levels[0].stats.lifeExpectancy || 55)
+  const perItemLife = usedProps.length > 0 ? lifeTotal / usedProps.length : 4
+
+  const LABELS: Record<string, string> = {
+    helmet: 'Capacete', gloves: 'Luvas', boots: 'Botas',
+    harness: 'Cinturão', mask: 'Máscara', goggles: 'Óculos',
+    earProtection: 'Abafador', apron: 'Avental',
+  }
+
+  const RISK_MAP: Record<string, (keyof WorkerRisks)[]> = {
+    helmet: ['headImpact'],
+    gloves: ['handCuts'],
+    boots: ['bodyImpact'],
+    harness: ['fallRisk'],
+    mask: ['breathing', 'chemical'],
+    goggles: ['chemical'],
+    earProtection: ['noise'],
+    apron: ['heatExposure'],
+  }
+
+  return usedProps.map((prop, i) => ({
+    id: prop as EpiType,
+    label: LABELS[prop] || prop,
+    workerProp: prop,
+    risksRemoved: RISK_MAP[prop],
+    riskReduction: Math.round(perItem),
+    complianceWeight: Math.round(perItemComp),
+    lifeYearsAdded: Math.round(perItemLife * 10) / 10,
+    fineReduction: Math.round(perItemFine),
+    tutorAdded: levels[Math.min(i + 1, 3)].tutor.headline,
+    tutorRemoved: levels[0].tutor.headline,
+  }))
 }
 
 export default function WorkerLab({ config }: { config: WorkerLabConfig }) {
-  const [level, setLevel] = useState<0 | 1 | 2 | 3>(0)
-  const data = config.levels[level]
-  const { stats, tutor, worker } = data
+  // Converte levels legados pra items se necessario
+  const items = useMemo(() => config.items || itemsFromLevels(config), [config])
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement> | React.FormEvent<HTMLInputElement>) => {
-    const v = parseInt((e.target as HTMLInputElement).value, 10)
-    if (v >= 0 && v <= 3) setLevel(v as 0 | 1 | 2 | 3)
+  const baseStats = config.baseStats || {
+    riskFatal: config.levels?.[0]?.stats?.fatalRisk ?? 80,
+    compliance: 0,
+    fineEstimate: config.levels?.[0]?.stats?.fineEstimate ?? 4000,
+    lifeExpectancy: config.levels?.[0]?.stats?.lifeExpectancy ?? 55,
   }
+  const baseRisks = config.baseRisks || config.levels?.[0]?.worker?.risks || { headImpact: true, handCuts: true, fallRisk: true }
 
-  const fatalColor = stats.fatalRisk === undefined ? ACCENT
-    : stats.fatalRisk >= 60 ? '#ef4444'
-    : stats.fatalRisk >= 30 ? '#f97316'
-    : stats.fatalRisk > 10 ? '#fbbf24'
-    : '#4ade80'
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [lastAction, setLastAction] = useState<{ id: string; added: boolean } | null>(null)
 
-  const complianceColor = stats.compliance === undefined ? ACCENT
-    : stats.compliance >= 80 ? '#4ade80'
-    : stats.compliance >= 40 ? '#fbbf24'
-    : '#ef4444'
+  const toggle = useCallback((id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+        setLastAction({ id, added: false })
+      } else {
+        next.add(id)
+        setLastAction({ id, added: true })
+      }
+      return next
+    })
+  }, [])
 
-  const tutorFullText = [tutor.headline, tutor.detail, tutor.warning, tutor.suggestion].filter(Boolean).join(' ')
+  const clearAll = useCallback(() => {
+    setSelected(new Set())
+    setLastAction(null)
+  }, [])
+
+  // Calcula stats a partir da selecao
+  const stats = useMemo(() => {
+    const selectedItems = items.filter(it => selected.has(it.id))
+    const riskFatal = Math.max(2, baseStats.riskFatal - selectedItems.reduce((s, it) => s + it.riskReduction, 0))
+    const compliance = Math.min(100, selectedItems.reduce((s, it) => s + it.complianceWeight, 0))
+    const fineEstimate = Math.max(0, baseStats.fineEstimate - selectedItems.reduce((s, it) => s + it.fineReduction, 0))
+    const lifeExpectancy = Math.round(baseStats.lifeExpectancy + selectedItems.reduce((s, it) => s + it.lifeYearsAdded, 0))
+    const riskGrade = RISK_GRADE(riskFatal)
+    return { riskFatal, compliance, fineEstimate, lifeExpectancy, riskGrade }
+  }, [selected, items, baseStats])
+
+  // Worker props a partir da selecao
+  const workerProps = useMemo(() => {
+    const w: Partial<WorkerProps> = {
+      mood: Math.min(1, selected.size / Math.max(1, items.length)),
+      backgroundHint: config.defaultBackground || 'scaffold',
+    }
+    // EPIs
+    for (const item of items) {
+      if (selected.has(item.id) && item.workerProp) {
+        (w as Record<string, unknown>)[item.workerProp] = true
+      }
+    }
+    // Riscos: comeca com todos os base, remove os cobertos por items selecionados
+    const risks = { ...baseRisks } as Record<string, boolean>
+    for (const item of items) {
+      if (selected.has(item.id) && item.risksRemoved) {
+        for (const r of item.risksRemoved) risks[r] = false
+      }
+    }
+    w.risks = risks as WorkerRisks
+    return w
+  }, [selected, items, config.defaultBackground, baseRisks])
+
+  // ai.tutor: reage a ultima acao ou estado geral
+  const tutorText = useMemo(() => {
+    if (selected.size === 0) {
+      return config.tutorEmpty || config.levels?.[0]?.tutor?.headline || 'Sem proteção. Arraste pra ativar.'
+    }
+    if (selected.size === items.length) {
+      return config.tutorFull || config.levels?.[3]?.tutor?.headline || 'Proteção completa.'
+    }
+    if (lastAction) {
+      const item = items.find(it => it.id === lastAction.id)
+      if (item) {
+        return lastAction.added ? item.tutorAdded : item.tutorRemoved
+      }
+    }
+    const missing = items.filter(it => !selected.has(it.id))
+    return `Faltam ${missing.length} itens: ${missing.map(it => it.label).join(', ')}.`
+  }, [selected, items, lastAction, config])
+
+  const tutorDetail = useMemo(() => {
+    if (selected.size === 0) return config.levels?.[0]?.tutor?.detail || ''
+    if (selected.size === items.length) return config.levels?.[3]?.tutor?.detail || ''
+    if (lastAction) {
+      const levelIdx = Math.min(3, Math.round((selected.size / items.length) * 3))
+      return config.levels?.[levelIdx]?.tutor?.detail || ''
+    }
+    return ''
+  }, [selected, items, lastAction, config])
+
+  const fatalColor = stats.riskFatal >= 60 ? '#ef4444' : stats.riskFatal >= 35 ? '#f97316' : stats.riskFatal > 15 ? '#fbbf24' : '#4ade80'
+  const compColor = stats.compliance >= 80 ? '#4ade80' : stats.compliance >= 40 ? '#fbbf24' : '#ef4444'
+  const fullTutorText = [tutorText, tutorDetail].filter(Boolean).join(' ')
 
   return (
     <div>
-      {/* Grid: SVG + controls */}
+      {/* Grid: SVG + botoes/stats */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)',
@@ -97,92 +257,100 @@ export default function WorkerLab({ config }: { config: WorkerLabConfig }) {
           minHeight: 360,
         }}>
           <WorkerSVG
-            mood={worker.mood ?? 0}
-            helmet={worker.helmet}
-            gloves={worker.gloves}
-            boots={worker.boots}
-            harness={worker.harness}
-            mask={worker.mask}
-            goggles={worker.goggles}
-            earProtection={worker.earProtection}
-            apron={worker.apron}
-            risks={worker.risks}
-            backgroundHint={worker.backgroundHint || config.defaultBackground || 'scaffold'}
+            mood={workerProps.mood ?? 0}
+            helmet={workerProps.helmet}
+            gloves={workerProps.gloves}
+            boots={workerProps.boots}
+            harness={workerProps.harness}
+            mask={workerProps.mask}
+            goggles={workerProps.goggles}
+            earProtection={workerProps.earProtection}
+            apron={workerProps.apron}
+            risks={workerProps.risks}
+            backgroundHint={workerProps.backgroundHint}
           />
         </div>
 
-        {/* Sliders + stats */}
+        {/* Botoes toggle + stats */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* BOTOES DE EPI */}
           <div style={{
             background: '#080c14', border: '1px solid #1e293b', borderRadius: 10,
-            padding: 16,
+            padding: 14,
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-              {config.sliderLabel}
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: ACCENT, marginBottom: 10 }}>
-              {data.label}
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={3}
-              step={1}
-              value={level}
-              onChange={handleSliderChange}
-              onInput={handleSliderChange}
-              style={{ width: '100%' }}
-            />
             <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              fontSize: 10, color: '#64748b', marginTop: 4,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: 10,
             }}>
-              {config.sliderTicks.map((t, i) => (
-                <span key={i}>{t}</span>
-              ))}
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>
+                Equipamentos de proteção
+              </div>
+              {selected.size > 0 && (
+                <button
+                  onClick={clearAll}
+                  style={{
+                    fontSize: 10, color: '#ef4444', background: 'none',
+                    border: '1px solid #ef444444', borderRadius: 6,
+                    padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit',
+                    fontWeight: 600,
+                  }}
+                >
+                  Tirar todos
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {items.map(item => {
+                const isActive = selected.has(item.id)
+                const itemColor = isActive ? ACCENT : '#475569'
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => toggle(item.id)}
+                    title={item.label}
+                    style={{
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', gap: 4,
+                      padding: '8px 10px', borderRadius: 10,
+                      border: `2px solid ${isActive ? ACCENT : '#1e293b'}`,
+                      background: isActive ? `${ACCENT}1A` : 'transparent',
+                      cursor: 'pointer',
+                      opacity: isActive ? 1 : 0.5,
+                      transition: 'all 0.2s',
+                      minWidth: 60,
+                      boxShadow: isActive ? `0 0 12px ${ACCENT}44` : 'none',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <EpiIcon type={item.id} color={itemColor} size={28} />
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, color: itemColor,
+                      textTransform: 'uppercase', letterSpacing: 0.5,
+                    }}>
+                      {item.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{
+              marginTop: 10, fontSize: 11, color: '#64748b',
+              textAlign: 'center',
+            }}>
+              {selected.size === 0 ? 'Nenhum EPI selecionado' :
+               selected.size === items.length ? '✓ Proteção completa' :
+               `${selected.size} de ${items.length} itens ativos`}
             </div>
           </div>
 
-          {/* Stat cards */}
-          {stats.riskGrade && (
-            <StatCard
-              label="Grau de risco"
-              value={stats.riskGrade}
-              color={RISK_COLOR[stats.riskGrade]}
-              icon={AlertTriangle}
-            />
-          )}
-          {stats.fatalRisk !== undefined && (
-            <StatCard
-              label="Risco de acidente grave"
-              value={`${stats.fatalRisk}%`}
-              color={fatalColor}
-              icon={AlertTriangle}
-            />
-          )}
-          {stats.compliance !== undefined && (
-            <StatCard
-              label="Conformidade"
-              value={`${stats.compliance}%`}
-              color={complianceColor}
-              icon={ShieldCheck}
-            />
-          )}
-          {stats.lifeExpectancy !== undefined && (
-            <StatCard
-              label="Expectativa de vida"
-              value={`${stats.lifeExpectancy} anos`}
-              color={stats.lifeExpectancy >= 75 ? '#4ade80' : stats.lifeExpectancy >= 68 ? '#fbbf24' : '#ef4444'}
-              icon={Heart}
-            />
-          )}
-          {stats.fineEstimate !== undefined && (
-            <StatCard
-              label="Multa estimada (por trabalhador)"
-              value={stats.fineEstimate === 0 ? 'R$ 0' : `R$ ${stats.fineEstimate.toLocaleString('pt-BR')}`}
-              color={stats.fineEstimate === 0 ? '#4ade80' : '#ef4444'}
-            />
-          )}
+          {/* STAT CARDS */}
+          <StatCard label="Grau de risco" value={stats.riskGrade} color={RISK_COLOR[stats.riskGrade]} icon={AlertTriangle}/>
+          <StatCard label="Risco de acidente grave" value={`${stats.riskFatal}%`} color={fatalColor} icon={AlertTriangle}/>
+          <StatCard label="Conformidade" value={`${stats.compliance}%`} color={compColor} icon={ShieldCheck}/>
+          <StatCard label="Expectativa de vida" value={`${stats.lifeExpectancy} anos`} color={stats.lifeExpectancy >= 75 ? '#4ade80' : stats.lifeExpectancy >= 68 ? '#fbbf24' : '#ef4444'} icon={Heart}/>
+          <StatCard label="Multa estimada" value={stats.fineEstimate === 0 ? 'R$ 0' : `R$ ${stats.fineEstimate.toLocaleString('pt-BR')}`} color={stats.fineEstimate === 0 ? '#4ade80' : '#ef4444'}/>
         </div>
       </div>
 
@@ -204,56 +372,32 @@ export default function WorkerLab({ config }: { config: WorkerLabConfig }) {
           <span style={{
             background: 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899, #22d3ee)',
             backgroundSize: '200% 100%',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             animation: 'gradientShift 3s linear infinite',
-          }}>
-            ai.tutor
-          </span>
+          }}>ai.tutor</span>
         </div>
-
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
           <div style={{
-            flexShrink: 0,
-            width: 42, height: 42, borderRadius: '50%',
-            background: `${ACCENT}22`,
-            border: `1.5px solid ${ACCENT}88`,
+            flexShrink: 0, width: 42, height: 42, borderRadius: '50%',
+            background: `${ACCENT}22`, border: `1.5px solid ${ACCENT}88`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: `0 0 14px ${ACCENT}55`,
           }}>
             <Bot size={22} color={ACCENT} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div key={level} className="fadeIn"
+            <div key={`${selected.size}-${lastAction?.id}`} className="fadeIn"
               style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3, marginBottom: 6 }}>
-              {tutor.headline}
+              {tutorText}
             </div>
-            <div style={{ fontSize: 14, lineHeight: 1.65, color: '#cbd5e1' }}>
-              {tutor.detail}
-            </div>
-            {tutor.warning && (
-              <div style={{
-                marginTop: 10, padding: '8px 12px',
-                background: 'rgba(249,115,22,0.10)',
-                border: '1px solid rgba(249,115,22,0.3)',
-                borderRadius: 8,
-                fontSize: 13, color: '#fbbf24', lineHeight: 1.5,
-                display: 'flex', alignItems: 'flex-start', gap: 8,
-              }}>
-                <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
-                <span><strong>Cuidado:</strong> {tutor.warning}</span>
-              </div>
-            )}
-            {tutor.suggestion && (
-              <div style={{
-                marginTop: 10, fontSize: 13, color: '#94a3b8', lineHeight: 1.5, fontStyle: 'italic',
-              }}>
-                <strong style={{ color: ACCENT, fontStyle: 'normal' }}>Tenta isso:</strong> {tutor.suggestion}
+            {tutorDetail && (
+              <div style={{ fontSize: 14, lineHeight: 1.65, color: '#cbd5e1' }}>
+                {tutorDetail}
               </div>
             )}
           </div>
           <div style={{ flexShrink: 0 }}>
-            <PlayButton text={tutorFullText} size={14} />
+            <PlayButton text={fullTutorText} size={14} />
           </div>
         </div>
       </div>
@@ -262,36 +406,27 @@ export default function WorkerLab({ config }: { config: WorkerLabConfig }) {
 }
 
 function StatCard({ label, value, color, icon: Icon }: {
-  label: string
-  value: string
-  color: string
+  label: string; value: string; color: string
   icon?: React.ComponentType<{ size?: number; color?: string }>
 }) {
   return (
     <div style={{
-      background: '#080c14',
-      border: `1px solid ${color}33`,
-      borderRadius: 10,
-      padding: '10px 14px',
+      background: '#080c14', border: `1px solid ${color}33`,
+      borderRadius: 10, padding: '10px 14px',
       display: 'flex', alignItems: 'center', gap: 12,
     }}>
       {Icon && (
         <div style={{
           width: 32, height: 32, borderRadius: 8,
           background: `${color}1A`, border: `1px solid ${color}55`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>
           <Icon size={15} color={color} />
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-          {label}
-        </div>
-        <div style={{ fontSize: 17, fontWeight: 700, color, fontFamily: "'JetBrains Mono', monospace", marginTop: 1 }}>
-          {value}
-        </div>
+        <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6 }}>{label}</div>
+        <div style={{ fontSize: 17, fontWeight: 700, color, fontFamily: "'JetBrains Mono', monospace", marginTop: 1 }}>{value}</div>
       </div>
     </div>
   )
