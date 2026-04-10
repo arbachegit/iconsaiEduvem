@@ -80,6 +80,11 @@ const ACCENT = '#22d3ee'
 export default function SimEpiNR06() {
   const [level, setLevel] = useState<EpiLevel>(0)
   const data = LEVELS[level]
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement> | React.FormEvent<HTMLInputElement>) => {
+    const v = parseInt((e.target as HTMLInputElement).value, 10)
+    if (v >= 0 && v <= 3) setLevel(v as EpiLevel)
+  }
   const riskColor = data.riskFatal >= 60 ? '#ef4444' : data.riskFatal >= 30 ? '#f97316' : '#4ade80'
   const complianceColor = data.compliance >= 80 ? '#4ade80' : data.compliance >= 40 ? '#fbbf24' : '#ef4444'
 
@@ -132,11 +137,9 @@ export default function SimEpiNR06() {
               max={3}
               step={1}
               value={level}
-              onChange={(e) => setLevel(parseInt(e.target.value) as EpiLevel)}
-              style={{
-                width: '100%',
-                accentColor: ACCENT,
-              }}
+              onChange={handleSliderChange}
+              onInput={handleSliderChange}
+              style={{ width: '100%' }}
             />
             <div style={{
               display: 'flex', justifyContent: 'space-between',

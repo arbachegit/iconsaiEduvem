@@ -62,6 +62,9 @@ export default function LabBanner({
 
   const ready = !!simulation;
   const currentMsg = LOADING_MESSAGES[msgIdx % LOADING_MESSAGES.length];
+  // Extracao do Component pra variavel local — pattern recomendado pelo React
+  // pra renderizar componente vindo de prop dinamica sem perder identidade.
+  const SimComponent = simulation?.Component;
 
   return (
     <div ref={laboratoryRef} style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px 24px' }}>
@@ -131,9 +134,9 @@ export default function LabBanner({
             )}
           </div>
         </div>
-        {ready && simulation && (
+        {ready && SimComponent && (
           <div style={{ marginTop: 6 }}>
-            <simulation.Component />
+            <SimComponent />
           </div>
         )}
       </div>

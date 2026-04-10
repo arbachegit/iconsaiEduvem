@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useMemo } from 'react'
 import { LessonNavigation } from './education/LessonNavigation'
 import { SvgComprehensionCheck } from './education/SvgComprehensionCheck'
 import { TermModal, useTermModalStack } from './education/TermModal'
@@ -42,13 +42,16 @@ export default function LessonView({
   lessonId, nrId, nrCode, nrTitle, sectorSlug, sectorName, title, sections,
   exerciseIds = {}, restLoading = false, generationElapsed = 0,
 }: LessonViewProps) {
-  // Simulacao vem do registro por nrId. Se stage2 ainda carregando, mostra loading.
-  // Se NR nao tem sim registrada, fica null (LabBanner mostra loading forever — mas
-  // sao poucas NRs, entao passa pra null depois do restLoading acabar).
+  // Simulacao vem do registro por nrId. useMemo pra ref estavel — sem isso, cada
+  // re-render do LessonView (mudanca de currentSection, comprehension, etc) cria
+  // um novo objeto literal e reseta o state interno do componente da simulacao.
   const registeredSim = getSimulation(nrId)
-  const simulation = !restLoading && registeredSim
-    ? { title: registeredSim.title, subtitle: registeredSim.subtitle, Component: registeredSim.Component }
-    : null
+  const simulation = useMemo(
+    () => !restLoading && registeredSim
+      ? { title: registeredSim.title, subtitle: registeredSim.subtitle, Component: registeredSim.Component }
+      : null,
+    [restLoading, registeredSim]
+  )
   const [currentSection, setCurrentSection] = useState(1)
   const [comprehensionFeedback, setComprehensionFeedback] = useState<Record<number, boolean | undefined>>({})
   const [recapText, setRecapText] = useState<Record<number, string>>({})
