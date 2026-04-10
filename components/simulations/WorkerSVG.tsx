@@ -37,6 +37,7 @@ export interface WorkerProps {
   apron?: boolean              // avental de couro (frigorifico, soldadura)
   risks?: WorkerRisks
   backgroundHint?: 'scaffold' | 'factory' | 'office' | 'outdoor' | 'none'
+    | 'electrical' | 'fire' | 'confined' | 'maritime' | 'hospital' | 'noise'
 }
 
 export default function WorkerSVG({
@@ -52,37 +53,330 @@ export default function WorkerSVG({
         </linearGradient>
       </defs>
 
-      {/* Background hint */}
+      {/* ═══ BACKGROUNDS — cenas DOMINANTES (60%+ do visual) ═══ */}
+
+      {/* ANDAIME/CONSTRUCAO — estrutura metalica alta, plataformas, tela de protecao */}
       {backgroundHint === 'scaffold' && (
-        <g opacity="0.22" stroke="#475569" strokeWidth="2" fill="none">
-          <line x1="40" y1="340" x2="40" y2="60"/>
-          <line x1="260" y1="340" x2="260" y2="60"/>
-          <line x1="40" y1="140" x2="260" y2="140"/>
-          <line x1="40" y1="60" x2="260" y2="60"/>
+        <g>
+          {/* Estrutura metalica */}
+          <rect x="15" y="30" width="8" height="310" fill="#334155"/>
+          <rect x="277" y="30" width="8" height="310" fill="#334155"/>
+          <rect x="15" y="30" width="270" height="6" fill="#475569"/>
+          <rect x="15" y="120" width="270" height="4" fill="#475569"/>
+          <rect x="15" y="210" width="270" height="4" fill="#475569"/>
+          {/* Diagonais de suporte */}
+          <line x1="15" y1="30" x2="285" y2="120" stroke="#334155" strokeWidth="2"/>
+          <line x1="285" y1="120" x2="15" y2="210" stroke="#334155" strokeWidth="2"/>
+          {/* Plataformas com textura */}
+          <rect x="23" y="120" width="254" height="8" fill="#1e293b" stroke="#475569" strokeWidth="1"/>
+          <rect x="23" y="210" width="254" height="8" fill="#1e293b" stroke="#475569" strokeWidth="1"/>
+          {/* Tela de protecao (rede) */}
+          <g stroke="#22d3ee" strokeWidth="0.5" opacity="0.25">
+            {[0,1,2,3,4,5,6,7,8].map(i => <line key={`v${i}`} x1={23+i*28} y1="30" x2={23+i*28} y2="120"/>)}
+            {[0,1,2,3].map(i => <line key={`h${i}`} x1="23" y1={30+i*23} x2="277" y2={30+i*23}/>)}
+          </g>
+          {/* Bandeja salva-vidas */}
+          <rect x="23" y="300" width="254" height="6" fill="#f97316" opacity="0.5"/>
+          {/* Seta "AREA DE OBRA" */}
+          <text x="150" y="25" fontSize="8" fill="#f97316" textAnchor="middle" fontWeight="700" fontFamily="monospace" opacity="0.7">⚠ ÁREA DE OBRA</text>
         </g>
       )}
+
+      {/* FABRICA — maquina grande, engrenagem rotando, esteira, tubulacoes */}
       {backgroundHint === 'factory' && (
-        <g opacity="0.22" stroke="#475569" strokeWidth="2" fill="none">
-          <rect x="30" y="180" width="60" height="80"/>
-          <rect x="210" y="180" width="60" height="80"/>
-          <line x1="60" y1="180" x2="60" y2="140"/>
-          <line x1="240" y1="180" x2="240" y2="140"/>
-          <circle cx="60" cy="130" r="6"/>
-          <circle cx="240" cy="130" r="6"/>
+        <g>
+          {/* Maquina grande a esquerda */}
+          <rect x="5" y="80" width="80" height="200" rx="4" fill="#1e293b" stroke="#475569" strokeWidth="2"/>
+          <rect x="12" y="90" width="66" height="40" rx="2" fill="#0f172a" stroke="#334155" strokeWidth="1"/>
+          {/* Engrenagem rotando */}
+          <g className="nrA-gear" style={{ transformOrigin: '45px 200px' }}>
+            <circle cx="45" cy="200" r="22" fill="#1e293b" stroke="#64748b" strokeWidth="2.5"/>
+            <circle cx="45" cy="200" r="8" fill="#475569"/>
+            <rect x="43" y="175" width="4" height="10" fill="#64748b"/>
+            <rect x="43" y="215" width="4" height="10" fill="#64748b"/>
+            <rect x="20" y="198" width="10" height="4" fill="#64748b"/>
+            <rect x="60" y="198" width="10" height="4" fill="#64748b"/>
+          </g>
+          {/* Esteira transportadora embaixo */}
+          <rect x="5" y="300" width="290" height="12" rx="2" fill="#1e293b" stroke="#334155" strokeWidth="1.5"/>
+          <g stroke="#475569" strokeWidth="1">
+            {[0,1,2,3,4,5,6,7,8,9].map(i => <line key={`e${i}`} x1={10+i*29} y1="300" x2={10+i*29} y2="312"/>)}
+          </g>
+          {/* Tubulacoes no teto */}
+          <line x1="0" y1="40" x2="300" y2="40" stroke="#475569" strokeWidth="6"/>
+          <line x1="0" y1="55" x2="300" y2="55" stroke="#334155" strokeWidth="4"/>
+          <circle cx="80" cy="40" r="8" fill="#1e293b" stroke="#64748b" strokeWidth="2"/>
+          <circle cx="220" cy="40" r="8" fill="#1e293b" stroke="#64748b" strokeWidth="2"/>
+          {/* Alerta no topo */}
+          <text x="150" y="30" fontSize="7" fill="#fbbf24" textAnchor="middle" fontWeight="700" fontFamily="monospace" opacity="0.7">⚠ ZONA DE MÁQUINAS</text>
         </g>
       )}
+
+      {/* ESCRITORIO — mesa, monitor, cadeira, relogio, planta */}
       {backgroundHint === 'office' && (
-        <g opacity="0.22" stroke="#475569" strokeWidth="2" fill="none">
-          <rect x="40" y="220" width="220" height="60"/>
-          <line x1="50" y1="220" x2="50" y2="330"/>
-          <line x1="250" y1="220" x2="250" y2="330"/>
-          <line x1="150" y1="220" x2="150" y2="280"/>
+        <g>
+          {/* Mesa grande */}
+          <rect x="30" y="220" width="240" height="8" rx="1" fill="#334155"/>
+          <rect x="50" y="228" width="8" height="100" fill="#1e293b"/>
+          <rect x="242" y="228" width="8" height="100" fill="#1e293b"/>
+          {/* Monitor */}
+          <rect x="55" y="165" width="70" height="50" rx="3" fill="#0f172a" stroke="#475569" strokeWidth="2"/>
+          <rect x="60" y="170" width="60" height="38" rx="1" fill="#1e293b"/>
+          <rect x="82" y="215" width="6" height="5" fill="#475569"/>
+          <rect x="72" y="218" width="26" height="3" fill="#475569"/>
+          {/* Texto no monitor */}
+          <line x1="65" y1="180" x2="108" y2="180" stroke="#22d3ee" strokeWidth="1" opacity="0.5"/>
+          <line x1="65" y1="186" x2="100" y2="186" stroke="#22d3ee" strokeWidth="1" opacity="0.3"/>
+          <line x1="65" y1="192" x2="112" y2="192" stroke="#22d3ee" strokeWidth="1" opacity="0.4"/>
+          {/* Cadeira a direita */}
+          <path d="M 210 240 Q 210 200 225 195 Q 240 200 240 240" fill="none" stroke="#475569" strokeWidth="2"/>
+          <ellipse cx="225" cy="280" rx="20" ry="3" fill="#334155"/>
+          <line x1="225" y1="245" x2="225" y2="275" stroke="#475569" strokeWidth="2"/>
+          {/* Relogio na parede */}
+          <circle cx="250" cy="80" r="18" fill="#0f172a" stroke="#475569" strokeWidth="2"/>
+          <line x1="250" y1="80" x2="250" y2="68" stroke="#e2e8f0" strokeWidth="1.5"/>
+          <line x1="250" y1="80" x2="260" y2="85" stroke="#e2e8f0" strokeWidth="1"/>
+          <circle cx="250" cy="80" r="2" fill="#e2e8f0"/>
+          {/* Plantinha */}
+          <rect x="15" y="190" width="16" height="20" fill="#78350f" rx="1"/>
+          <circle cx="23" cy="185" r="10" fill="#16a34a" opacity="0.6"/>
+          <circle cx="18" cy="180" r="7" fill="#22c55e" opacity="0.5"/>
         </g>
       )}
+
+      {/* SOL/CAMPO — sol grande, colinas, vegetacao, ceu */}
       {backgroundHint === 'outdoor' && (
-        <g opacity="0.18">
-          <circle cx="250" cy="50" r="18" fill="#fbbf24"/>
-          <path d="M 20 340 Q 150 310 280 340" stroke="#475569" strokeWidth="2" fill="none"/>
+        <g>
+          {/* Ceu gradiente */}
+          <rect x="0" y="0" width="300" height="200" fill="#0c2d48" opacity="0.5"/>
+          {/* Sol grande */}
+          <circle cx="250" cy="60" r="35" fill="#fbbf24" opacity="0.6"/>
+          <g stroke="#fbbf24" strokeWidth="2" opacity="0.4">
+            <line x1="250" y1="15" x2="250" y2="5"/>
+            <line x1="250" y1="105" x2="250" y2="115"/>
+            <line x1="205" y1="60" x2="195" y2="60"/>
+            <line x1="295" y1="60" x2="300" y2="60"/>
+            <line x1="220" y1="30" x2="213" y2="23"/>
+            <line x1="280" y1="90" x2="287" y2="97"/>
+            <line x1="220" y1="90" x2="213" y2="97"/>
+            <line x1="280" y1="30" x2="287" y2="23"/>
+          </g>
+          {/* Colinas */}
+          <path d="M 0 280 Q 50 230 120 260 Q 180 240 220 270 Q 260 250 300 260 L 300 340 L 0 340 Z" fill="#1a3a2a" opacity="0.7"/>
+          {/* Terreno */}
+          <path d="M 0 300 Q 80 285 150 295 Q 220 280 300 300 L 300 340 L 0 340 Z" fill="#2d1b0e" opacity="0.5"/>
+          {/* Arvores */}
+          <g opacity="0.6">
+            <rect x="30" y="240" width="4" height="30" fill="#78350f"/>
+            <circle cx="32" cy="230" r="12" fill="#166534"/>
+            <rect x="270" y="230" width="4" height="35" fill="#78350f"/>
+            <circle cx="272" cy="220" r="14" fill="#166534"/>
+          </g>
+          {/* Nuvem */}
+          <g opacity="0.3" fill="#94a3b8">
+            <ellipse cx="80" cy="45" rx="25" ry="10"/>
+            <ellipse cx="95" cy="40" rx="15" ry="8"/>
+            <ellipse cx="70" cy="40" rx="12" ry="7"/>
+          </g>
+        </g>
+      )}
+
+      {/* PAINEL ELETRICO — quadro de disjuntores, fios, aviso de tensao */}
+      {backgroundHint === 'electrical' && (
+        <g>
+          {/* Painel grande */}
+          <rect x="5" y="50" width="100" height="220" rx="3" fill="#1e293b" stroke="#64748b" strokeWidth="2.5"/>
+          <rect x="12" y="58" width="86" height="20" rx="1" fill="#0f172a"/>
+          <text x="55" y="72" fontSize="7" fill="#ef4444" textAnchor="middle" fontWeight="700" fontFamily="monospace">⚡ 380V ⚡</text>
+          {/* Disjuntores */}
+          {[0,1,2,3,4,5].map(i => (
+            <g key={`dj${i}`}>
+              <rect x={18+i*13} y="90" width="10" height="20" rx="1" fill={i < 3 ? '#22c55e' : '#64748b'} stroke="#475569" strokeWidth="1"/>
+              <rect x={20+i*13} y={i < 3 ? 90 : 100} width="6" height="4" fill="#0f172a"/>
+            </g>
+          ))}
+          {/* Fios saindo do painel — coloridos */}
+          <path d="M 105 80 Q 140 60 170 90 Q 200 120 150 140" stroke="#ef4444" strokeWidth="2.5" fill="none"/>
+          <path d="M 105 110 Q 160 85 190 120 Q 210 150 160 155" stroke="#3b82f6" strokeWidth="2.5" fill="none"/>
+          <path d="M 105 140 Q 150 125 175 160" stroke="#22c55e" strokeWidth="2.5" fill="none"/>
+          {/* Triangulo de perigo GRANDE */}
+          <polygon points="250,60 220,110 280,110" fill="none" stroke="#fbbf24" strokeWidth="3"/>
+          <text x="250" y="100" fontSize="18" fill="#fbbf24" textAnchor="middle" fontWeight="900">⚡</text>
+          <text x="250" y="125" fontSize="7" fill="#fbbf24" textAnchor="middle" fontWeight="700" fontFamily="monospace">RISCO DE CHOQUE</text>
+          {/* Aterramento */}
+          <g stroke="#22c55e" strokeWidth="2" opacity="0.6">
+            <line x1="55" y1="270" x2="55" y2="310"/>
+            <line x1="40" y1="310" x2="70" y2="310"/>
+            <line x1="44" y1="316" x2="66" y2="316"/>
+            <line x1="48" y1="322" x2="62" y2="322"/>
+          </g>
+        </g>
+      )}
+
+      {/* INCENDIO — chamas, fumaca, saida de emergencia, extintor */}
+      {backgroundHint === 'fire' && (
+        <g>
+          {/* Chamas a direita */}
+          <g opacity="0.7">
+            <path d="M 230 340 Q 225 280 240 250 Q 250 220 240 200 Q 260 230 270 260 Q 280 290 275 340 Z" fill="#ef4444"/>
+            <path d="M 245 340 Q 242 300 250 270 Q 258 300 255 340 Z" fill="#f97316"/>
+            <path d="M 250 340 Q 248 310 252 290 Q 256 310 254 340 Z" fill="#fbbf24"/>
+          </g>
+          {/* Fumaca (nuvens cinza subindo) */}
+          <g opacity="0.35" fill="#64748b">
+            <ellipse cx="240" cy="170" rx="30" ry="15">
+              <animate attributeName="cy" values="170;130;90;50" dur="4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.4;0.25;0.1;0" dur="4s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="260" cy="140" rx="20" ry="10">
+              <animate attributeName="cy" values="140;100;60;20" dur="3.5s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.35;0.2;0.08;0" dur="3.5s" repeatCount="indefinite"/>
+            </ellipse>
+          </g>
+          {/* Extintor na parede */}
+          <rect x="12" y="160" width="22" height="55" rx="4" fill="#ef4444" stroke="#991b1b" strokeWidth="1.5"/>
+          <rect x="18" y="150" width="10" height="12" rx="1" fill="#64748b"/>
+          <path d="M 23 150 L 10 140" stroke="#64748b" strokeWidth="2" strokeLinecap="round"/>
+          {/* Placa SAIDA */}
+          <rect x="10" y="40" width="60" height="25" rx="2" fill="#16a34a" stroke="#15803d" strokeWidth="1.5"/>
+          <text x="40" y="57" fontSize="10" fill="#fff" textAnchor="middle" fontWeight="700">SAÍDA →</text>
+          {/* Detector de fumaca no teto */}
+          <circle cx="150" cy="20" r="10" fill="#1e293b" stroke="#64748b" strokeWidth="1.5"/>
+          <circle cx="150" cy="20" r="3" fill="#ef4444">
+            <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite"/>
+          </circle>
+        </g>
+      )}
+
+      {/* ESPACO CONFINADO — paredes de tanque, escuridao, detector de gas */}
+      {backgroundHint === 'confined' && (
+        <g>
+          {/* Paredes do tanque/silo */}
+          <rect x="30" y="20" width="240" height="310" rx="8" fill="#0a0e17" stroke="#475569" strokeWidth="3"/>
+          <rect x="40" y="30" width="220" height="290" rx="4" fill="#050810"/>
+          {/* Abertura (boca do tanque) */}
+          <ellipse cx="150" cy="30" rx="80" ry="12" fill="#1e293b" stroke="#64748b" strokeWidth="2"/>
+          {/* Escada de acesso */}
+          <line x1="60" y1="42" x2="60" y2="300" stroke="#64748b" strokeWidth="2"/>
+          <line x1="72" y1="42" x2="72" y2="300" stroke="#64748b" strokeWidth="2"/>
+          {[0,1,2,3,4,5,6,7,8].map(i => <line key={`r${i}`} x1="60" y1={50+i*28} x2="72" y2={50+i*28} stroke="#64748b" strokeWidth="1.5"/>)}
+          {/* Detector de gas */}
+          <rect x="220" y="80" width="30" height="40" rx="3" fill="#1e293b" stroke="#22c55e" strokeWidth="1.5"/>
+          <text x="235" y="96" fontSize="6" fill="#22c55e" textAnchor="middle" fontFamily="monospace">O₂</text>
+          <text x="235" y="108" fontSize="9" fill="#22c55e" textAnchor="middle" fontWeight="700" fontFamily="monospace">19.5%</text>
+          {/* Alerta CONFINED */}
+          <text x="150" y="16" fontSize="7" fill="#f97316" textAnchor="middle" fontWeight="700" fontFamily="monospace">⚠ ESPAÇO CONFINADO</text>
+          {/* Escuridao gradient */}
+          <rect x="40" y="200" width="220" height="120" fill="url(#confined-dark)" rx="4"/>
+          <defs>
+            <linearGradient id="confined-dark" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#050810" stopOpacity="0"/>
+              <stop offset="100%" stopColor="#050810" stopOpacity="0.8"/>
+            </linearGradient>
+          </defs>
+        </g>
+      )}
+
+      {/* MARITIMO — ondas, convés de navio, boia, cordas */}
+      {backgroundHint === 'maritime' && (
+        <g>
+          {/* Convés do navio */}
+          <rect x="0" y="260" width="300" height="80" fill="#334155" stroke="#475569" strokeWidth="2"/>
+          <rect x="0" y="258" width="300" height="6" fill="#475569"/>
+          {/* Guarda-corpo */}
+          <line x1="0" y1="230" x2="300" y2="230" stroke="#64748b" strokeWidth="3"/>
+          <line x1="20" y1="230" x2="20" y2="260" stroke="#64748b" strokeWidth="2"/>
+          <line x1="80" y1="230" x2="80" y2="260" stroke="#64748b" strokeWidth="2"/>
+          <line x1="220" y1="230" x2="220" y2="260" stroke="#64748b" strokeWidth="2"/>
+          <line x1="280" y1="230" x2="280" y2="260" stroke="#64748b" strokeWidth="2"/>
+          <line x1="0" y1="245" x2="300" y2="245" stroke="#64748b" strokeWidth="1.5"/>
+          {/* Oceano com ondas */}
+          <rect x="0" y="0" width="300" height="230" fill="#0c2d48" opacity="0.5"/>
+          <path d="M 0 180 Q 40 165 80 180 T 160 180 T 240 180 T 320 180" stroke="#22d3ee" strokeWidth="2" fill="none" opacity="0.4">
+            <animate attributeName="d" values="M 0 180 Q 40 165 80 180 T 160 180 T 240 180 T 320 180;M 0 185 Q 40 170 80 185 T 160 185 T 240 185 T 320 185;M 0 180 Q 40 165 80 180 T 160 180 T 240 180 T 320 180" dur="3s" repeatCount="indefinite"/>
+          </path>
+          <path d="M 0 200 Q 50 185 100 200 T 200 200 T 300 200" stroke="#22d3ee" strokeWidth="1.5" fill="none" opacity="0.3">
+            <animate attributeName="d" values="M 0 200 Q 50 185 100 200 T 200 200 T 300 200;M 0 205 Q 50 190 100 205 T 200 205 T 300 205;M 0 200 Q 50 185 100 200 T 200 200 T 300 200" dur="3.5s" repeatCount="indefinite"/>
+          </path>
+          {/* Boia salva-vidas */}
+          <circle cx="262" cy="270" r="14" fill="none" stroke="#ef4444" strokeWidth="4"/>
+          <circle cx="262" cy="270" r="14" fill="none" stroke="#fff" strokeWidth="2" strokeDasharray="10 10"/>
+          {/* Corda */}
+          <path d="M 248 270 L 230 250 L 220 260" stroke="#d4a574" strokeWidth="2" fill="none" strokeDasharray="4 2"/>
+          {/* Bandeira */}
+          <line x1="10" y1="100" x2="10" y2="230" stroke="#64748b" strokeWidth="2"/>
+          <rect x="10" y="100" width="25" height="18" fill="#22d3ee"/>
+        </g>
+      )}
+
+      {/* HOSPITAL — maca, cortina, monitor cardiaco, seringa */}
+      {backgroundHint === 'hospital' && (
+        <g>
+          {/* Parede + faixa colorida */}
+          <rect x="0" y="0" width="300" height="340" fill="#0c1320" opacity="0.4"/>
+          <rect x="0" y="0" width="300" height="4" fill="#22d3ee"/>
+          {/* Maca/leito */}
+          <rect x="170" y="200" width="120" height="50" rx="2" fill="#1e293b" stroke="#475569" strokeWidth="1.5"/>
+          <rect x="175" y="195" width="110" height="10" rx="1" fill="#334155"/>
+          <line x1="180" y1="250" x2="180" y2="280" stroke="#64748b" strokeWidth="2"/>
+          <line x1="280" y1="250" x2="280" y2="280" stroke="#64748b" strokeWidth="2"/>
+          <circle cx="180" cy="282" r="5" fill="none" stroke="#64748b" strokeWidth="1.5"/>
+          <circle cx="280" cy="282" r="5" fill="none" stroke="#64748b" strokeWidth="1.5"/>
+          {/* Monitor cardiaco */}
+          <rect x="220" y="100" width="60" height="50" rx="3" fill="#0f172a" stroke="#475569" strokeWidth="1.5"/>
+          <path d="M 228 125 L 238 125 L 243 112 L 248 135 L 253 120 L 258 125 L 270 125" stroke="#22c55e" strokeWidth="2" fill="none">
+            <animate attributeName="d" values="M 228 125 L 238 125 L 243 112 L 248 135 L 253 120 L 258 125 L 270 125;M 228 125 L 238 125 L 243 115 L 248 132 L 253 122 L 258 125 L 270 125;M 228 125 L 238 125 L 243 112 L 248 135 L 253 120 L 258 125 L 270 125" dur="1.2s" repeatCount="indefinite"/>
+          </path>
+          {/* Cruz vermelha */}
+          <g opacity="0.6">
+            <rect x="30" y="50" width="40" height="40" rx="4" fill="#0f172a" stroke="#ef4444" strokeWidth="2"/>
+            <rect x="45" y="56" width="10" height="28" fill="#ef4444"/>
+            <rect x="36" y="65" width="28" height="10" fill="#ef4444"/>
+          </g>
+          {/* Cortina */}
+          <g stroke="#475569" strokeWidth="1" opacity="0.4">
+            <line x1="165" y1="0" x2="165" y2="340"/>
+            {[0,1,2,3,4,5].map(i => <path key={`c${i}`} d={`M 165 ${i*55} Q 155 ${i*55+20} 165 ${i*55+40}`}/>)}
+          </g>
+        </g>
+      )}
+
+      {/* RUIDO — caixas de som, ondas sonoras, medidor dB */}
+      {backgroundHint === 'noise' && (
+        <g>
+          {/* Caixas de som industriais */}
+          <rect x="5" y="100" width="50" height="80" rx="3" fill="#1e293b" stroke="#64748b" strokeWidth="2"/>
+          <circle cx="30" cy="125" r="12" fill="#0f172a" stroke="#475569" strokeWidth="2"/>
+          <circle cx="30" cy="125" r="5" fill="#334155"/>
+          <circle cx="30" cy="160" r="8" fill="#0f172a" stroke="#475569" strokeWidth="1.5"/>
+          <rect x="245" y="100" width="50" height="80" rx="3" fill="#1e293b" stroke="#64748b" strokeWidth="2"/>
+          <circle cx="270" cy="125" r="12" fill="#0f172a" stroke="#475569" strokeWidth="2"/>
+          <circle cx="270" cy="125" r="5" fill="#334155"/>
+          <circle cx="270" cy="160" r="8" fill="#0f172a" stroke="#475569" strokeWidth="1.5"/>
+          {/* Ondas sonoras emanando */}
+          <g stroke="#f97316" strokeWidth="2" fill="none" opacity="0.5">
+            <path d="M 55 130 Q 65 120 65 140">
+              <animate attributeName="opacity" values="0.5;0.1;0.5" dur="0.8s" repeatCount="indefinite"/>
+            </path>
+            <path d="M 65 130 Q 80 110 80 150">
+              <animate attributeName="opacity" values="0.1;0.5;0.1" dur="0.8s" repeatCount="indefinite"/>
+            </path>
+            <path d="M 245 130 Q 235 120 235 140">
+              <animate attributeName="opacity" values="0.5;0.1;0.5" dur="0.8s" repeatCount="indefinite"/>
+            </path>
+            <path d="M 235 130 Q 220 110 220 150">
+              <animate attributeName="opacity" values="0.1;0.5;0.1" dur="0.8s" repeatCount="indefinite"/>
+            </path>
+          </g>
+          {/* Medidor de dB */}
+          <rect x="120" y="30" width="60" height="35" rx="3" fill="#0f172a" stroke="#f97316" strokeWidth="2"/>
+          <text x="150" y="48" fontSize="8" fill="#f97316" textAnchor="middle" fontFamily="monospace">NÍVEL</text>
+          <text x="150" y="60" fontSize="12" fill="#ef4444" textAnchor="middle" fontWeight="900" fontFamily="monospace">92 dB</text>
+          {/* Chao industrial */}
+          <rect x="0" y="310" width="300" height="30" fill="#1e293b" opacity="0.5"/>
+          <g stroke="#334155" strokeWidth="1" opacity="0.5">
+            {[0,1,2,3,4,5,6,7,8,9].map(i => <line key={`f${i}`} x1={i*30} y1="310" x2={i*30+15} y2="340"/>)}
+          </g>
         </g>
       )}
 

@@ -124,7 +124,7 @@ export const CFG_NR35: WorkerLabConfig = {
 export const CFG_NR10: WorkerLabConfig = {
   sliderLabel: 'Nível de proteção elétrica',
   sliderTicks: ['Energizado', 'Desligado', '+EPI diel.', 'Bloqueado'],
-  defaultBackground: 'factory',
+  defaultBackground: 'electrical',
   levels: [
     {
       label: 'Circuito energizado',
@@ -321,7 +321,7 @@ export const CFG_NR15: WorkerLabConfig = {
 export const CFG_NR33: WorkerLabConfig = {
   sliderLabel: 'Procedimento de entrada',
   sliderTicks: ['Sem medir', 'Monitor de gás', '+Ventilação', 'PT + vigia'],
-  defaultBackground: 'factory',
+  defaultBackground: 'confined',
   levels: [
     {
       label: 'Entrada cega',
@@ -522,7 +522,7 @@ function genericFire(o: GenericOpts): WorkerLabConfig {
   return {
     sliderLabel: 'Preparo contra incêndio',
     sliderTicks: ['Sem preparo', 'Extintor', '+Rota de fuga', 'Brigada ativa'],
-    defaultBackground: 'factory',
+    defaultBackground: 'fire',
     levels: [
       { label: 'Sem preparo', worker: { mood: 0, risks: { heatExposure: true, breathing: true, bodyImpact: true } },
         stats: { riskGrade: 'Crítico', fatalRisk: 74, compliance: 0, fineEstimate: 4200, lifeExpectancy: 52 },
@@ -545,7 +545,7 @@ function genericHealth(o: GenericOpts): WorkerLabConfig {
   return {
     sliderLabel: 'Paramentação hospitalar',
     sliderTicks: ['Sem barreira', 'Luvas', '+Máscara +Óculos', 'Completa'],
-    defaultBackground: 'office',
+    defaultBackground: 'hospital',
     levels: [
       { label: 'Sem barreira biológica', worker: { mood: 0, risks: { chemical: true, handCuts: true, breathing: true }, backgroundHint: 'office' },
         stats: { riskGrade: 'Crítico', fatalRisk: 38, compliance: 0, fineEstimate: 3800, lifeExpectancy: 58 },
@@ -568,7 +568,7 @@ function genericNoise(o: GenericOpts): WorkerLabConfig {
   return {
     sliderLabel: 'Proteção contra ruído e calor',
     sliderTicks: ['Exposto', 'Plug de ouvido', '+Abafador', 'Eliminação'],
-    defaultBackground: 'factory',
+    defaultBackground: 'noise',
     levels: [
       { label: 'Exposição direta', worker: { mood: 0, risks: { noise: true, heatExposure: true }, backgroundHint: 'factory' },
         stats: { riskGrade: 'Crítico', fatalRisk: 22, compliance: 0, fineEstimate: 3600, lifeExpectancy: 58 },
@@ -591,7 +591,7 @@ function genericMaritime(o: GenericOpts): WorkerLabConfig {
   return {
     sliderLabel: 'Proteção aquaviária',
     sliderTicks: ['Desprotegido', 'Colete', '+Linha de vida', 'Conforme'],
-    defaultBackground: 'scaffold',
+    defaultBackground: 'maritime',
     levels: [
       { label: 'Desprotegido', worker: { mood: 0, risks: { fallRisk: true, bodyImpact: true, breathing: true } },
         stats: { riskGrade: 'Crítico', fatalRisk: 78, compliance: 0, fineEstimate: 4800, lifeExpectancy: 52 },
