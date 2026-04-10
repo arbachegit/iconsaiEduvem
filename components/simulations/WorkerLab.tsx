@@ -235,9 +235,20 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
     return ''
   }, [selected, items, lastAction, config])
 
+  const tutorWarning = useMemo(() => {
+    const levelIdx = Math.min(3, Math.round((selected.size / Math.max(1, items.length)) * 3))
+    return config.levels?.[levelIdx]?.tutor?.warning || ''
+  }, [selected, items, config])
+
+  const tutorSuggestion = useMemo(() => {
+    if (selected.size === items.length) return config.levels?.[3]?.tutor?.suggestion || ''
+    const levelIdx = Math.min(3, Math.round((selected.size / Math.max(1, items.length)) * 3))
+    return config.levels?.[levelIdx]?.tutor?.suggestion || ''
+  }, [selected, items, config])
+
   const fatalColor = stats.riskFatal >= 60 ? '#ef4444' : stats.riskFatal >= 35 ? '#f97316' : stats.riskFatal > 15 ? '#fbbf24' : '#4ade80'
   const compColor = stats.compliance >= 80 ? '#4ade80' : stats.compliance >= 40 ? '#fbbf24' : '#ef4444'
-  const fullTutorText = [tutorText, tutorDetail].filter(Boolean).join(' ')
+  const fullTutorText = [tutorText, tutorDetail, tutorWarning, tutorSuggestion].filter(Boolean).join(' ')
 
   return (
     <div>
@@ -396,6 +407,31 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
             {tutorDetail && (
               <div style={{ fontSize: 14, lineHeight: 1.65, color: '#cbd5e1' }}>
                 {tutorDetail}
+              </div>
+            )}
+            {tutorWarning && (
+              <div style={{
+                marginTop: 10, padding: '8px 12px',
+                background: 'rgba(249,115,22,0.10)',
+                border: '1px solid rgba(249,115,22,0.3)',
+                borderRadius: 8,
+                fontSize: 13, color: '#fbbf24', lineHeight: 1.5,
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+              }}>
+                <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                <span><strong>Cuidado:</strong> {tutorWarning}</span>
+              </div>
+            )}
+            {tutorSuggestion && (
+              <div style={{
+                marginTop: 10, padding: '8px 12px',
+                background: 'rgba(34,211,238,0.06)',
+                border: '1px solid rgba(34,211,238,0.2)',
+                borderRadius: 8,
+                fontSize: 13, color: '#94a3b8', lineHeight: 1.5,
+                fontStyle: 'italic',
+              }}>
+                <strong style={{ color: ACCENT, fontStyle: 'normal' }}>↗ Tenta isso:</strong> {tutorSuggestion}
               </div>
             )}
           </div>
