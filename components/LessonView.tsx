@@ -302,10 +302,13 @@ function renderMarkdownWithTerms(md: string, accentColor: string): string {
   html = html.replace(/(<li[^>]*>[\s\S]*?<\/li>(?:\s*<li[^>]*>[\s\S]*?<\/li>)*)/g, '<ul style="padding-left:24px;margin:12px 0">$1</ul>')
   html = html.split(/\n{2,}/).map(p => p.trim().startsWith('<') ? p : `<p style="margin:14px 0">${p}</p>`).join('\n')
 
+  // Boundary que inclui acentos BR: evita match de "AT" dentro de "até",
+  // "AR" dentro de "área", "PT" dentro de "aptidão", etc.
+  const WB = '[\\wà-üÀ-Ü]'  // word char + acentos brasileiros
   const sorted = [...NR_CONCEPTUAL_TERMS].sort((a, b) => b.length - a.length)
   for (const term of sorted) {
     const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const regex = new RegExp(`(?<!data-term-link=")(?<![\\w])${escaped}(?![\\w])`, 'gi')
+    const regex = new RegExp(`(?<!data-term-link=")(?<!${WB})${escaped}(?!${WB})`, 'gi')
     html = html.replace(regex, (match) =>
       `<span data-term-link="${match}" style="color:${accentColor};cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;text-decoration-color:${accentColor}88;font-weight:600">${match}</span>`
     )
