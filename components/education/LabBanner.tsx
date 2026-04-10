@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Atom } from 'lucide-react';
+import PlayButton from './PlayButton';
 
 /* ═══════════════════════════════════════════════════════════
    LabBanner — Banner do Laboratório.
@@ -109,8 +110,13 @@ export default function LabBanner({
                 <div style={{ color: '#e2e8f0', fontSize: 17, fontWeight: 700, marginTop: 2 }}>
                   {simulation.title}
                 </div>
-                <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
-                  {simulation.subtitle || 'Mexa nos parâmetros. Toda mexida ensina algo.'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5, flex: 1 }}>
+                    {simulation.subtitle || 'Mexa nos parâmetros. Toda mexida ensina algo.'}
+                  </div>
+                  <div style={{ flexShrink: 0 }}>
+                    <PlayButton text={simulation.subtitle || 'Mexa nos parâmetros. Toda mexida ensina algo.'} size={14} />
+                  </div>
                 </div>
               </>
             ) : simulationNotAvailable ? (

@@ -409,6 +409,11 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
                     }}>
                       ✓
                     </div>
+                    {isActive && item.fullName && (
+                      <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                        <PlayButton text={`${item.fullName}. ${item.description || ''}`} size={12} />
+                      </div>
+                    )}
                   </button>
                 )
               })}

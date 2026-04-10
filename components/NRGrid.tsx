@@ -6,6 +6,7 @@ import { getSectorMeta } from '@/lib/sectors-meta'
 import type { NRProgress } from '@/lib/student-progress'
 import LessonModal from './LessonModal'
 import NRAnimation from './NRAnimation'
+import PlayButton from './education/PlayButton'
 
 interface NRWithRelevance {
   id: number
@@ -222,11 +223,18 @@ function NRCard({ nr, color, onOpen, delay, progress }: {
           <ProgressCheck done={(p?.termsClicked || 0) > 0} label={`${p?.termsClicked || 0} termos`} />
         </div>
 
-        {/* CTA */}
+        {/* CTA + PlayButton */}
         <div style={{
-          fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.8,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          {hasActivity ? 'Continuar aula →' : 'Abrir aula adaptativa →'}
+          <div style={{
+            fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.8,
+          }}>
+            {hasActivity ? 'Continuar aula →' : 'Abrir aula adaptativa →'}
+          </div>
+          <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
+            <PlayButton text={`${nr.code}. ${nr.title}. ${nr.rationale || ''}`} size={12} />
+          </div>
         </div>
       </div>
     </button>

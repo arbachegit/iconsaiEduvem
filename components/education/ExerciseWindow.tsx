@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { TypewriterOutput } from './TypewriterOutput'
+import PlayButton from './PlayButton'
 import { safeEval, formatResult } from '@/lib/safe-eval'
 import { trackEvent } from '@/lib/track-event'
 
@@ -149,8 +150,13 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
   return (
     <div style={{ margin: '20px 0', borderRadius: 12, overflow: 'hidden', border: '1px solid #1e293b' }}>
       <div style={{ padding: '16px 20px', background: '#0c1320', borderBottom: '1px solid #1e293b' }}>
-        <div style={{ fontSize: 15, color: '#e2e8f0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-          {prompt}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <div style={{ fontSize: 15, color: '#e2e8f0', lineHeight: 1.6, whiteSpace: 'pre-wrap', flex: 1 }}>
+            {prompt}
+          </div>
+          <div style={{ flexShrink: 0, marginTop: 2 }}>
+            <PlayButton text={prompt} size={14} />
+          </div>
         </div>
         {showHints && hints.length > 0 && (
           <ul style={{ margin: '12px 0 0', paddingLeft: 20, color: '#94a3b8', fontSize: 13 }}>

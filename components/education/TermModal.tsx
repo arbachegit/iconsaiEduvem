@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import PlayButton from './PlayButton'
 
 /* ═══════════════════════════════════════════════════════════
    TermModal — Stackable pedagogical modals (porta 1:1 do stats)
@@ -74,13 +75,18 @@ export function TermModal({ content, stackLevel, onClose, onTermClick }: TermMod
           position: 'sticky', top: 0, background: '#0c1320', zIndex: 1,
           borderRadius: '16px 16px 0 0',
         }}>
-          <div>
-            <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
-              Conceito {stackLevel > 0 ? `(nivel ${stackLevel + 1})` : ''}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                Conceito {stackLevel > 0 ? `(nivel ${stackLevel + 1})` : ''}
+              </div>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#22d3ee', margin: 0 }}>
+                {content.term}
+              </h2>
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#22d3ee', margin: 0 }}>
-              {content.term}
-            </h2>
+            <div style={{ flexShrink: 0 }}>
+              <PlayButton text={[content.whatIs, content.howItWorks, content.realExample, content.whyItMatters].filter(Boolean).join('. ')} size={14} />
+            </div>
           </div>
           <button
             onClick={onClose}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, CSSProperties } from 'react'
 import { trackEvent } from '@/lib/track-event'
+import PlayButton from './education/PlayButton'
 
 /* ─── Tutorial slides ─── */
 const slides = [
@@ -148,7 +149,10 @@ export default function WelcomeModal() {
     return (
       <div style={overlay}>
         <div style={card}>
-          <h2 style={titleStyle}>Bem-vindo ao Interativo Mundo da NR</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
+            <h2 style={{ ...titleStyle, marginBottom: 0 }}>Bem-vindo ao Interativo Mundo da NR</h2>
+            <PlayButton text="Pra te dar a melhor experiência, a gente coleta quais aulas você abriu, por quanto tempo, e suas respostas nos exercícios. Não vendemos seus dados. Você pode pedir exclusão a qualquer momento escrevendo pra arbache@gmail.com." size={14} />
+          </div>
           <p style={bodyText}>
             Pra te dar a melhor experiencia, a gente coleta quais aulas voce abriu,
             por quanto tempo, e suas respostas nos exercicios. Nao vendemos seus dados.
@@ -203,7 +207,10 @@ export default function WelcomeModal() {
     <div style={overlay}>
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: 20 }}>{slide.icon}</div>
-        <h2 style={titleStyle}>{slide.title}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
+          <h2 style={{ ...titleStyle, marginBottom: 0 }}>{slide.title}</h2>
+          <PlayButton text={`${slide.title}. ${slide.text}`} size={14} />
+        </div>
         <p style={bodyText}>{slide.text}</p>
 
         {/* Dots */}

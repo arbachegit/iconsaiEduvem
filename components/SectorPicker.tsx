@@ -1,6 +1,9 @@
+'use client'
+
 import Link from 'next/link'
 import { SECTORS_META } from '@/lib/sectors-meta'
 import SectorAnimation from './SectorAnimation'
+import PlayButton from './education/PlayButton'
 
 interface Sector {
   id: number
@@ -92,10 +95,17 @@ export default function SectorPicker({ sectors }: { sectors: Sector[] }) {
               </div>
               <div style={{
                 marginTop: 16,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontSize: 13, color: meta.color, fontWeight: 600,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               }}>
-                Ver NRs deste setor →
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontSize: 13, color: meta.color, fontWeight: 600,
+                }}>
+                  Ver NRs deste setor →
+                </span>
+                <span onClick={(e) => e.preventDefault()} style={{ flexShrink: 0 }}>
+                  <PlayButton text={`${sector.name}. ${meta.shortDesc}`} size={12} />
+                </span>
               </div>
             </Link>
           )
