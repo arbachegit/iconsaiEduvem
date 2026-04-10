@@ -249,6 +249,24 @@ input[type="range"]::-moz-range-thumb:hover {
 .nrA-door           { animation: nrFadeFast 1.8s ease-in-out infinite; }
 
 /* ════════════════════════════════════════════════════════════
+   ATOM SPIN (LabBanner + qualquer Lucide Atom girando)
+   Canon iconsaiStats: atomSpin 4s linear infinite + transformBox fill-box
+   ════════════════════════════════════════════════════════════ */
+
+@keyframes atomSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes labPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.5); transform: scale(1); }
+  50%      { box-shadow: 0 0 0 6px rgba(34,211,238,0); transform: scale(1.04); }
+}
+@keyframes audioIdlePulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(251,191,36,0.3); }
+  50%      { box-shadow: 0 0 16px rgba(251,191,36,0.6); }
+}
+
+/* ════════════════════════════════════════════════════════════
    NR CARD container — shimmer sweep + hover lift + code glow
    ════════════════════════════════════════════════════════════ */
 
