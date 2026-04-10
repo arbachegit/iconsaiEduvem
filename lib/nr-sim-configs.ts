@@ -517,6 +517,121 @@ function genericOffice(o: GenericOpts): WorkerLabConfig {
   }
 }
 
+/** INCENDIO/EMERGENCIA — mascara + fumaca + extintor. Riscos: heatExposure, breathing. */
+function genericFire(o: GenericOpts): WorkerLabConfig {
+  return {
+    sliderLabel: 'Preparo contra incêndio',
+    sliderTicks: ['Sem preparo', 'Extintor', '+Rota de fuga', 'Brigada ativa'],
+    defaultBackground: 'factory',
+    levels: [
+      { label: 'Sem preparo', worker: { mood: 0, risks: { heatExposure: true, breathing: true, bodyImpact: true } },
+        stats: { riskGrade: 'Crítico', fatalRisk: 74, compliance: 0, fineEstimate: 4200, lifeExpectancy: 52 },
+        tutor: { headline: `Fogo se alastra em segundos — e ${o.criticalStat}.`, detail: `${o.topic}: sem saída sinalizada e sem extintor, a probabilidade de morte por inalação de fumaça é 3x maior [${o.keyCite}].`, warning: 'A maioria morre de fumaça, não de queimadura.' } },
+      { label: 'Extintor disponível', worker: { mood: 0.35, boots: true, helmet: true, risks: { heatExposure: true, breathing: true } },
+        stats: { riskGrade: 'Alto', fatalRisk: 45, compliance: 30, fineEstimate: 2600, lifeExpectancy: 62 },
+        tutor: { headline: 'Tem extintor, mas sabe usar? E a saída?', detail: `Extintor sem treinamento e sem sinalização de rota de fuga é decoração [${o.keyCite}].` } },
+      { label: '+Rota sinalizada', worker: { mood: 0.7, boots: true, helmet: true, mask: true, risks: {} },
+        stats: { riskGrade: 'Médio', fatalRisk: 16, compliance: 70, fineEstimate: 800, lifeExpectancy: 72 },
+        tutor: { headline: 'Rotas sinalizadas + iluminação de emergência + extintor.', detail: `Simulação de evacuação a cada 6 meses [${o.keyCite}].`, suggestion: 'Falta a brigada treinada e o plano de emergência escrito.' } },
+      { label: 'Brigada ativa', worker: { mood: 1, boots: true, helmet: true, mask: true, gloves: true },
+        stats: { riskGrade: 'Baixo', fatalRisk: 4, compliance: 100, fineEstimate: 0, lifeExpectancy: 77 },
+        tutor: { headline: 'Brigada treinada + plano de emergência + simulado semestral.', detail: `${o.nrCode} cumprida. Tempo de evacuação dentro do limite.` } },
+    ],
+  }
+}
+
+/** SAUDE/HOSPITALAR — mascara, luva esteril, face shield, avental descartavel. Riscos: biological. */
+function genericHealth(o: GenericOpts): WorkerLabConfig {
+  return {
+    sliderLabel: 'Paramentação hospitalar',
+    sliderTicks: ['Sem barreira', 'Luvas', '+Máscara +Óculos', 'Completa'],
+    defaultBackground: 'office',
+    levels: [
+      { label: 'Sem barreira biológica', worker: { mood: 0, risks: { chemical: true, handCuts: true, breathing: true }, backgroundHint: 'office' },
+        stats: { riskGrade: 'Crítico', fatalRisk: 38, compliance: 0, fineEstimate: 3800, lifeExpectancy: 58 },
+        tutor: { headline: `Sangue, agulha, fluido — sem barreira é roleta.`, detail: `${o.topic}: ${o.criticalStat} [${o.keyCite}]. Risco de hepatite B, C e HIV por perfurocortante.`, warning: '1 em cada 300 acidentes com agulha contaminada transmite HIV.' } },
+      { label: 'Luvas de procedimento', worker: { mood: 0.35, gloves: true, boots: true, risks: { breathing: true, chemical: true }, backgroundHint: 'office' },
+        stats: { riskGrade: 'Alto', fatalRisk: 22, compliance: 30, fineEstimate: 2200, lifeExpectancy: 65 },
+        tutor: { headline: 'Mãos protegidas, rosto exposto.', detail: `Luvas cortam contato dérmico mas sem máscara e óculos a mucosa é porta de entrada [${o.keyCite}].` } },
+      { label: '+Máscara +Óculos', worker: { mood: 0.7, gloves: true, boots: true, mask: true, goggles: true, backgroundHint: 'office' },
+        stats: { riskGrade: 'Médio', fatalRisk: 9, compliance: 70, fineEstimate: 800, lifeExpectancy: 73 },
+        tutor: { headline: 'Barreira respiratória + ocular + luvas.', detail: `Falta o avental impermeável pra respingos e o descartável pós-procedimento [${o.keyCite}].` } },
+      { label: 'Paramentação completa', worker: { mood: 1, gloves: true, boots: true, mask: true, goggles: true, apron: true, backgroundHint: 'office' },
+        stats: { riskGrade: 'Baixo', fatalRisk: 2, compliance: 100, fineEstimate: 0, lifeExpectancy: 78 },
+        tutor: { headline: 'Luvas + máscara + óculos + avental + descarte correto.', detail: `${o.nrCode} cumprida. Protocolo de exposição acidental documentado.` } },
+    ],
+  }
+}
+
+/** RUIDO/CALOR — protetor auricular progressivo + tempo de exposicao. Riscos: noise, heatExposure. */
+function genericNoise(o: GenericOpts): WorkerLabConfig {
+  return {
+    sliderLabel: 'Proteção contra ruído e calor',
+    sliderTicks: ['Exposto', 'Plug de ouvido', '+Abafador', 'Eliminação'],
+    defaultBackground: 'factory',
+    levels: [
+      { label: 'Exposição direta', worker: { mood: 0, risks: { noise: true, heatExposure: true }, backgroundHint: 'factory' },
+        stats: { riskGrade: 'Crítico', fatalRisk: 22, compliance: 0, fineEstimate: 3600, lifeExpectancy: 58 },
+        tutor: { headline: `85dB por 8h mata a audição em 5 anos.`, detail: `${o.topic}: ${o.criticalStat}. PAIR (Perda Auditiva Induzida por Ruído) é irreversível [${o.keyCite}].`, warning: 'Trabalhador só percebe a surdez quando já perdeu 50%. Aí não volta.' } },
+      { label: 'Plug de ouvido', worker: { mood: 0.35, earProtection: true, boots: true, risks: { noise: true, heatExposure: true }, backgroundHint: 'factory' },
+        stats: { riskGrade: 'Alto', fatalRisk: 15, compliance: 30, fineEstimate: 2000, lifeExpectancy: 65 },
+        tutor: { headline: 'Plug atenua ~15dB. Pra ruído acima de 100dB não basta.', detail: `Plug de inserção tipo espuma. Mas se o ruído é de impacto, precisa abafador tipo concha [${o.keyCite}].` } },
+      { label: '+Abafador tipo concha', worker: { mood: 0.7, earProtection: true, helmet: true, boots: true, goggles: true, risks: {}, backgroundHint: 'factory' },
+        stats: { riskGrade: 'Médio', fatalRisk: 6, compliance: 70, fineEstimate: 600, lifeExpectancy: 73 },
+        tutor: { headline: 'Abafador atenua ~25dB. Combinado com plug chega a ~35dB.', detail: `Ruído controlado no receptor. Mas o ideal é reduzir na fonte [${o.keyCite}].` } },
+      { label: 'Eliminação na fonte', worker: { mood: 1, earProtection: true, helmet: true, boots: true, goggles: true, gloves: true, backgroundHint: 'factory' },
+        stats: { riskGrade: 'Baixo', fatalRisk: 2, compliance: 100, fineEstimate: 0, lifeExpectancy: 77 },
+        tutor: { headline: 'Enclausuramento da fonte + abafador como backup.', detail: `${o.nrCode} cumprida. Audiometria periódica em dia. Zero PAIR.` } },
+    ],
+  }
+}
+
+/** MARITIMO/PORTUARIO — colete salva-vidas, cordas, escada embarque. Riscos: fallRisk, breathing. */
+function genericMaritime(o: GenericOpts): WorkerLabConfig {
+  return {
+    sliderLabel: 'Proteção aquaviária',
+    sliderTicks: ['Desprotegido', 'Colete', '+Linha de vida', 'Conforme'],
+    defaultBackground: 'scaffold',
+    levels: [
+      { label: 'Desprotegido', worker: { mood: 0, risks: { fallRisk: true, bodyImpact: true, breathing: true } },
+        stats: { riskGrade: 'Crítico', fatalRisk: 78, compliance: 0, fineEstimate: 4800, lifeExpectancy: 52 },
+        tutor: { headline: `Queda no mar sem colete = minutos pra afogar.`, detail: `${o.topic}: ${o.criticalStat}. Hipotermia chega em 15 minutos mesmo em águas tropicais [${o.keyCite}].`, warning: 'Operações de resgate marítimo levam em média 12 minutos. Sem colete, o trabalhador não sobrevive.' } },
+      { label: 'Colete salva-vidas', worker: { mood: 0.35, helmet: true, boots: true, risks: { fallRisk: true, bodyImpact: true } },
+        stats: { riskGrade: 'Alto', fatalRisk: 42, compliance: 30, fineEstimate: 2800, lifeExpectancy: 62 },
+        tutor: { headline: 'Colete mantém flutuando, mas falta evitar a queda.', detail: `O colete salva depois. A linha de vida impede antes [${o.keyCite}].` } },
+      { label: '+Linha de vida', worker: { mood: 0.7, helmet: true, boots: true, gloves: true, harness: true },
+        stats: { riskGrade: 'Médio', fatalRisk: 15, compliance: 70, fineEstimate: 900, lifeExpectancy: 72 },
+        tutor: { headline: 'Colete + cinto + linha de vida + guarda-corpo.', detail: `Sistema combinado. Falta procedimento formal e sinalização [${o.keyCite}].` } },
+      { label: 'Conforme', worker: { mood: 1, helmet: true, boots: true, gloves: true, harness: true, goggles: true },
+        stats: { riskGrade: 'Baixo', fatalRisk: 4, compliance: 100, fineEstimate: 0, lifeExpectancy: 77 },
+        tutor: { headline: 'Colete + cinto + linha de vida + procedimento + treinamento.', detail: `${o.nrCode} cumprida. Equipe de resgate posicionada.` } },
+    ],
+  }
+}
+
+/** CONFORMIDADE/GESTAO — clipboard, documentos, PGR. Foco administrativo mas impacto real. */
+function genericCompliance(o: GenericOpts): WorkerLabConfig {
+  return {
+    sliderLabel: 'Maturidade da gestão de SST',
+    sliderTicks: ['Inexistente', 'Reativo', 'Estruturado', 'Proativo'],
+    defaultBackground: 'office',
+    levels: [
+      { label: 'Gestão inexistente', worker: { mood: 0, risks: { bodyImpact: true }, backgroundHint: 'office' },
+        stats: { riskGrade: 'Crítico', fatalRisk: 45, compliance: 0, fineEstimate: 4200, lifeExpectancy: 58 },
+        tutor: { headline: `Sem gestão de SST, o acidente é questão de quando — não se.`, detail: `${o.topic}: ${o.criticalStat}. A ${o.nrCode} existe pra forçar estrutura mínima [${o.keyCite}].`, warning: 'Empresa sem PGR é empresa que vai ser embargada na primeira visita.' } },
+      { label: 'Reativo (pós-acidente)', worker: { mood: 0.35, boots: true, backgroundHint: 'office' },
+        stats: { riskGrade: 'Alto', fatalRisk: 28, compliance: 30, fineEstimate: 2400, lifeExpectancy: 65 },
+        tutor: { headline: 'Só age depois que acontece. Sempre tarde demais.', detail: `Documentação básica pós-incidente. Sem prevenção real [${o.keyCite}].` } },
+      { label: 'Estruturado', worker: { mood: 0.7, boots: true, goggles: true, backgroundHint: 'office' },
+        stats: { riskGrade: 'Médio', fatalRisk: 10, compliance: 70, fineEstimate: 600, lifeExpectancy: 74 },
+        tutor: { headline: 'PGR documentado + treinamentos + inspeções periódicas.', detail: `Sistema funcionando com evidências. Falta melhoria contínua [${o.keyCite}].` } },
+      { label: 'Proativo', worker: { mood: 1, boots: true, backgroundHint: 'office' },
+        stats: { riskGrade: 'Baixo', fatalRisk: 2, compliance: 100, fineEstimate: 0, lifeExpectancy: 78 },
+        tutor: { headline: 'Prevenção real. Melhoria contínua. Zero acidentes como meta.', detail: `${o.nrCode} cumprida — a gestão de SST é parte da cultura, não obrigação.` } },
+    ],
+  }
+}
+
 /** CAMPO/OUTDOOR — chapeu, bota, protetor solar. Riscos: calor, picada, queda. */
 function genericOutdoor(o: GenericOpts): WorkerLabConfig {
   return {
@@ -546,40 +661,55 @@ function genericOutdoor(o: GenericOpts): WorkerLabConfig {
    visual da norma, nao uma generic identica.
    ═══════════════════════════════════════════════════════════ */
 
-// ADMINISTRATIVO/ESCRITORIO (office background, poucos EPIs, foco documental)
-export const CFG_NR01 = genericOffice({ nrCode: 'NR-01', topic: 'Gerenciamento de riscos ocupacionais (PGR)', criticalStat: 'riscos não identificados viram acidente', keyCite: 'NR-1, item 1.5.3' })
-export const CFG_NR03 = genericOffice({ nrCode: 'NR-03', topic: 'Embargo e interdição', criticalStat: 'reincidências levam a embargo', keyCite: 'NR-3, item 3.2' })
-export const CFG_NR04 = genericOffice({ nrCode: 'NR-04', topic: 'SESMT (Serviços Especializados)', criticalStat: 'acidentes por falta de assistência técnica', keyCite: 'NR-4, item 4.4' })
-export const CFG_NR05 = genericOffice({ nrCode: 'NR-05', topic: 'CIPA (Comissão Interna)', criticalStat: 'acidentes que a CIPA detectaria antes', keyCite: 'NR-5, item 5.4' })
-export const CFG_NR24 = genericOffice({ nrCode: 'NR-24', topic: 'Condições sanitárias e de conforto', criticalStat: 'doenças por instalações precárias', keyCite: 'NR-24, item 24.1' })
-export const CFG_NR26 = genericOffice({ nrCode: 'NR-26', topic: 'Sinalização de segurança', criticalStat: 'acidentes por falta de avisos visuais', keyCite: 'NR-26, item 26.1' })
-export const CFG_NR28 = genericOffice({ nrCode: 'NR-28', topic: 'Fiscalização e penalidades', criticalStat: 'multas e embargos por descumprimento', keyCite: 'NR-28, item 28.2' })
+/* ═══════════════════════════════════════════════════════════
+   MAPEAMENTO NR → TEMPLATE VISUAL (10 templates, maxima diversidade)
+   Nenhum template usado por mais de 4 NRs.
+   ═══════════════════════════════════════════════════════════ */
 
-// QUIMICO/BIOLOGICO (factory background, mascara, oculos, luvas, avental)
-export const CFG_NR07 = genericChemical({ nrCode: 'NR-07', topic: 'PCMSO (Programa de Controle Médico)', criticalStat: 'doenças ocupacionais não rastreadas no exame', keyCite: 'NR-7, item 7.4' })
-export const CFG_NR09 = genericChemical({ nrCode: 'NR-09', topic: 'Exposição a agentes (físicos/químicos/biológicos)', criticalStat: 'exposição crônica não medida', keyCite: 'NR-9, item 9.3' })
-export const CFG_NR16 = genericChemical({ nrCode: 'NR-16', topic: 'Atividades e operações perigosas', criticalStat: 'contato com inflamáveis/explosivos/radiação', keyCite: 'NR-16, item 16.2' })
-export const CFG_NR19 = genericChemical({ nrCode: 'NR-19', topic: 'Explosivos', criticalStat: 'explosões acidentais em manuseio', keyCite: 'NR-19, item 19.2' })
-export const CFG_NR20 = genericChemical({ nrCode: 'NR-20', topic: 'Inflamáveis e combustíveis', criticalStat: 'incêndios em áreas de armazenamento', keyCite: 'NR-20, item 20.3' })
-export const CFG_NR23 = genericChemical({ nrCode: 'NR-23', topic: 'Proteção contra incêndios', criticalStat: 'mortes por inalação de fumaça', keyCite: 'NR-23, item 23.2' })
+// GESTAO/COMPLIANCE (office, clipboard, PGR) — foco documental
+export const CFG_NR01 = genericCompliance({ nrCode: 'NR-01', topic: 'Gerenciamento de riscos ocupacionais (PGR)', criticalStat: 'riscos não identificados viram acidente previsível', keyCite: 'NR-1, item 1.5.3' })
+export const CFG_NR03 = genericCompliance({ nrCode: 'NR-03', topic: 'Embargo e interdição', criticalStat: 'reincidências levam a embargo imediato', keyCite: 'NR-3, item 3.2' })
+export const CFG_NR28 = genericCompliance({ nrCode: 'NR-28', topic: 'Fiscalização e penalidades', criticalStat: 'multas cumulativas podem fechar a empresa', keyCite: 'NR-28, item 28.2' })
+
+// ESCRITORIO/ERGONOMIA (office, cadeira, postura, LER)
+export const CFG_NR04 = genericOffice({ nrCode: 'NR-04', topic: 'SESMT (Serviços Especializados)', criticalStat: 'acidentes por falta de assistência técnica de SST', keyCite: 'NR-4, item 4.4' })
+export const CFG_NR05 = genericOffice({ nrCode: 'NR-05', topic: 'CIPA (Comissão Interna)', criticalStat: 'acidentes que inspeção interna detectaria antes', keyCite: 'NR-5, item 5.4' })
+export const CFG_NR24 = genericOffice({ nrCode: 'NR-24', topic: 'Condições sanitárias e de conforto', criticalStat: 'doenças por banheiro precário e água não potável', keyCite: 'NR-24, item 24.1' })
+export const CFG_NR26 = genericOffice({ nrCode: 'NR-26', topic: 'Sinalização de segurança', criticalStat: 'colisões e quedas por falta de sinalização visual', keyCite: 'NR-26, item 26.1' })
+
+// SAUDE/HOSPITALAR (hospital, paramentacao, biologico)
+export const CFG_NR07 = genericHealth({ nrCode: 'NR-07', topic: 'PCMSO (Programa de Controle Médico)', criticalStat: 'doenças ocupacionais diagnosticadas tarde demais', keyCite: 'NR-7, item 7.4' })
+export const CFG_NR32 = genericHealth({ nrCode: 'NR-32', topic: 'Serviços de saúde', criticalStat: 'contaminação biológica por perfurocortante', keyCite: 'NR-32, item 32.2' })
+
+// QUIMICO (factory, mascara, oculos, avental, gotas)
+export const CFG_NR09 = genericChemical({ nrCode: 'NR-09', topic: 'Exposição a agentes', criticalStat: 'exposição crônica não medida', keyCite: 'NR-9, item 9.3' })
+export const CFG_NR16 = genericChemical({ nrCode: 'NR-16', topic: 'Periculosidade', criticalStat: 'contato com inflamáveis/explosivos/radiação', keyCite: 'NR-16, item 16.2' })
 export const CFG_NR25 = genericChemical({ nrCode: 'NR-25', topic: 'Resíduos industriais', criticalStat: 'contaminação química e biológica', keyCite: 'NR-25, item 25.2' })
-export const CFG_NR32 = genericChemical({ nrCode: 'NR-32', topic: 'Serviços de saúde', criticalStat: 'contaminação biológica e perfurocortantes', keyCite: 'NR-32, item 32.2' })
-export const CFG_NR38 = genericChemical({ nrCode: 'NR-38', topic: 'Limpeza urbana e resíduos sólidos', criticalStat: 'contato com agentes biológicos no lixo', keyCite: 'NR-38, item 38.3' })
+export const CFG_NR38 = genericChemical({ nrCode: 'NR-38', topic: 'Limpeza urbana', criticalStat: 'contato com agentes biológicos no lixo', keyCite: 'NR-38, item 38.3' })
 
-// CONSTRUCAO/INDUSTRIAL PESADO (scaffold background, capacete, cinto, luvas, botas)
+// INCENDIO/EMERGENCIA (smoke, extintor, rota de fuga)
+export const CFG_NR19 = genericFire({ nrCode: 'NR-19', topic: 'Explosivos', criticalStat: 'detonação acidental em manuseio/transporte', keyCite: 'NR-19, item 19.2' })
+export const CFG_NR20 = genericFire({ nrCode: 'NR-20', topic: 'Inflamáveis e combustíveis', criticalStat: 'incêndio em área de armazenamento', keyCite: 'NR-20, item 20.3' })
+export const CFG_NR23 = genericFire({ nrCode: 'NR-23', topic: 'Proteção contra incêndios', criticalStat: 'mortes por inalação de fumaça', keyCite: 'NR-23, item 23.2' })
+
+// CONSTRUCAO PESADA (scaffold, capacete, cinto, luvas)
 export const CFG_NR08 = genericHeavy({ nrCode: 'NR-08', topic: 'Edificações', criticalStat: 'quedas em escadas e piso irregular', keyCite: 'NR-8, item 8.3' })
-export const CFG_NR11 = genericHeavy({ nrCode: 'NR-11', topic: 'Transporte e movimentação de materiais', criticalStat: 'quedas de carga e esmagamento', keyCite: 'NR-11, item 11.1.5' })
-export const CFG_NR22 = genericHeavy({ nrCode: 'NR-22', topic: 'Mineração', criticalStat: 'desabamentos e exposição a poeira', keyCite: 'NR-22, item 22.5' })
-export const CFG_NR29 = genericHeavy({ nrCode: 'NR-29', topic: 'Trabalho portuário', criticalStat: 'acidentes com contêineres e guindastes', keyCite: 'NR-29, item 29.1.4' })
-export const CFG_NR30 = genericHeavy({ nrCode: 'NR-30', topic: 'Trabalho aquaviário', criticalStat: 'quedas ao mar e asfixia em porão', keyCite: 'NR-30, item 30.3' })
+export const CFG_NR11 = genericHeavy({ nrCode: 'NR-11', topic: 'Movimentação de materiais', criticalStat: 'queda de carga e esmagamento', keyCite: 'NR-11, item 11.1.5' })
+export const CFG_NR22 = genericHeavy({ nrCode: 'NR-22', topic: 'Mineração', criticalStat: 'desabamento e inalação de poeira', keyCite: 'NR-22, item 22.5' })
 export const CFG_NR34 = genericHeavy({ nrCode: 'NR-34', topic: 'Construção naval', criticalStat: 'trabalho a quente em espaço confinado', keyCite: 'NR-34, item 34.11' })
-export const CFG_NR37 = genericHeavy({ nrCode: 'NR-37', topic: 'Plataformas de petróleo', criticalStat: 'explosões e vazamentos em alto-mar', keyCite: 'NR-37, item 37.5' })
 
-// MAQUINAS/FABRICA (factory background, protetor auricular, oculos, engrenagem)
-export const CFG_NR13 = genericMachine({ nrCode: 'NR-13', topic: 'Caldeiras e vasos de pressão', criticalStat: 'explosões por falha de inspeção', keyCite: 'NR-13, item 13.4' })
-export const CFG_NR14 = genericMachine({ nrCode: 'NR-14', topic: 'Fornos', criticalStat: 'queimaduras graves por contato térmico', keyCite: 'NR-14, item 14.1' })
-export const CFG_NR36 = genericMachine({ nrCode: 'NR-36', topic: 'Abate e processamento de carnes', criticalStat: 'LER/DORT e cortes de faca industrial', keyCite: 'NR-36, item 36.4' })
+// RUIDO/CALOR (factory, abafador, protetor auricular, dB)
+export const CFG_NR13 = genericNoise({ nrCode: 'NR-13', topic: 'Caldeiras e vasos de pressão', criticalStat: 'explosões por falha de inspeção + ruído contínuo', keyCite: 'NR-13, item 13.4' })
+export const CFG_NR14 = genericNoise({ nrCode: 'NR-14', topic: 'Fornos industriais', criticalStat: 'queimadura + perda auditiva por calor/ruído', keyCite: 'NR-14, item 14.1' })
 
-// CAMPO/OUTDOOR (outdoor background, sol, chapeu, hidratacao)
-export const CFG_NR21 = genericOutdoor({ nrCode: 'NR-21', topic: 'Trabalho a céu aberto', criticalStat: 'insolação, desidratação e descarga atmosférica', keyCite: 'NR-21, item 21.2' })
-export const CFG_NR31 = genericOutdoor({ nrCode: 'NR-31', topic: 'Trabalho rural', criticalStat: 'intoxicação por agrotóxico e acidente com máquina', keyCite: 'NR-31, item 31.8' })
+// MAQUINAS (factory, guarda, sensor, lockout)
+export const CFG_NR36 = genericMachine({ nrCode: 'NR-36', topic: 'Frigoríficos', criticalStat: 'LER/DORT + cortes de faca industrial', keyCite: 'NR-36, item 36.4' })
+
+// MARITIMO/PORTUARIO (colete, linha de vida, agua)
+export const CFG_NR29 = genericMaritime({ nrCode: 'NR-29', topic: 'Trabalho portuário', criticalStat: 'queda de contêiner + afogamento', keyCite: 'NR-29, item 29.1.4' })
+export const CFG_NR30 = genericMaritime({ nrCode: 'NR-30', topic: 'Trabalho aquaviário', criticalStat: 'queda ao mar + asfixia em porão', keyCite: 'NR-30, item 30.3' })
+export const CFG_NR37 = genericMaritime({ nrCode: 'NR-37', topic: 'Plataformas de petróleo', criticalStat: 'explosão + queda ao mar em alto-mar', keyCite: 'NR-37, item 37.5' })
+
+// CAMPO/OUTDOOR (sol, chapeu, hidratacao, agrotoxicos)
+export const CFG_NR21 = genericOutdoor({ nrCode: 'NR-21', topic: 'Trabalho a céu aberto', criticalStat: 'insolação + desidratação + descarga atmosférica', keyCite: 'NR-21, item 21.2' })
+export const CFG_NR31 = genericOutdoor({ nrCode: 'NR-31', topic: 'Trabalho rural', criticalStat: 'intoxicação por agrotóxico + acidente com máquina', keyCite: 'NR-31, item 31.8' })
