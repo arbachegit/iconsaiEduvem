@@ -5,6 +5,7 @@ import { Bot, AlertTriangle, ShieldCheck, Heart } from 'lucide-react'
 import PlayButton from '../education/PlayButton'
 import WorkerSVG, { type WorkerProps, type WorkerRisks } from './WorkerSVG'
 import { EpiIcon, type EpiType } from './EpiIcons'
+import { trackEvent } from '@/lib/track-event'
 
 /* ═══════════════════════════════════════════════════════════
    WorkerLab — laboratorio interativo com BOTOES TOGGLE DE EPI.
@@ -136,7 +137,7 @@ function itemsFromLevels(config: WorkerLabConfig): ProtectionItem[] {
   }))
 }
 
-export default function WorkerLab({ config }: { config: WorkerLabConfig }) {
+export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; nrId?: number }) {
   // Converte levels legados pra items se necessario
   const items = useMemo(() => config.items || itemsFromLevels(config), [config])
 
@@ -157,13 +158,15 @@ export default function WorkerLab({ config }: { config: WorkerLabConfig }) {
       if (next.has(id)) {
         next.delete(id)
         setLastAction({ id, added: false })
+        trackEvent('lab_interact', { nrId, itemId: id, added: false, selectedCount: next.size })
       } else {
         next.add(id)
         setLastAction({ id, added: true })
+        trackEvent('lab_interact', { nrId, itemId: id, added: true, selectedCount: next.size })
       }
       return next
     })
-  }, [])
+  }, [nrId])
 
   const clearAll = useCallback(() => {
     setSelected(new Set())

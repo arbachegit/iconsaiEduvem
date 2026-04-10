@@ -10,6 +10,7 @@ import PlayButton from './education/PlayButton'
 import { getSectorMeta } from '@/lib/sectors-meta'
 import { NR_CONCEPTUAL_TERMS } from '@/data/domain-configs/nr'
 import { getSimulation } from '@/lib/nr-simulations'
+import { trackEvent } from '@/lib/track-event'
 
 export interface LessonSection {
   index: number
@@ -52,7 +53,11 @@ export default function LessonView({
       : null,
     [restLoading, registeredSim]
   )
-  const [currentSection, setCurrentSection] = useState(1)
+  const [currentSection, setCurrentSectionRaw] = useState(1)
+  const navigateToSection = useCallback((newIndex: number) => {
+    setCurrentSectionRaw(newIndex)
+    trackEvent('section_view', { nrId, sectionIndex: newIndex })
+  }, [nrId])
   const [comprehensionFeedback, setComprehensionFeedback] = useState<Record<number, boolean | undefined>>({})
   const [recapText, setRecapText] = useState<Record<number, string>>({})
   const [recapLoading, setRecapLoading] = useState<number | null>(null)
@@ -74,6 +79,7 @@ export default function LessonView({
 
   const handleComprehension = useCallback(async (sectionIndex: number, understood: boolean) => {
     setComprehensionFeedback(prev => ({ ...prev, [sectionIndex]: understood }))
+    trackEvent('comprehension', { nrId, sectionIndex, understood })
 
     fetch('/api/eduven/comprehension', {
       method: 'POST',
@@ -102,7 +108,7 @@ export default function LessonView({
       } catch { /* ignore */ }
       setRecapLoading(null)
     }
-  }, [lessonId, sections])
+  }, [lessonId, nrId, sections])
 
   return (
     <>
@@ -127,7 +133,7 @@ export default function LessonView({
           <LessonNavigation
             currentSection={currentSection}
             comprehensionFeedback={comprehensionFeedback}
-            onNavigate={setCurrentSection}
+            onNavigate={navigateToSection}
             accentColor={accent}
           />
         </div>
@@ -164,7 +170,10 @@ export default function LessonView({
               <div
                 onClick={(e) => {
                   const target = e.target as HTMLElement
-                  if (target.dataset.termLink) termModals.openTerm(target.dataset.termLink)
+                  if (target.dataset.termLink) {
+                    trackEvent('term_click', { nrId, term: target.dataset.termLink, sectionIndex: currentSection })
+                    termModals.openTerm(target.dataset.termLink)
+                  }
                 }}
                 style={{
                   background: '#0c1320', borderRadius: 12, padding: '28px 32px',
@@ -226,7 +235,7 @@ export default function LessonView({
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
                 {currentSection > 1 && (
                   <button
-                    onClick={() => setCurrentSection(currentSection - 1)}
+                    onClick={() => navigateToSection(currentSection - 1)}
                     style={{
                       padding: '10px 24px', borderRadius: 8, border: '1px solid #1e293b',
                       background: 'transparent', color: '#94a3b8', fontSize: 14, cursor: 'pointer',
@@ -239,7 +248,7 @@ export default function LessonView({
                 <div style={{ flex: 1 }} />
                 {currentSection < 6 && sections.some(s => s.index === currentSection + 1) && (
                   <button
-                    onClick={() => setCurrentSection(currentSection + 1)}
+                    onClick={() => navigateToSection(currentSection + 1)}
                     style={{
                       padding: '10px 24px', borderRadius: 8, border: 'none',
                       background: accent, color: '#0a0e17', fontSize: 14, cursor: 'pointer',

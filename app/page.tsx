@@ -5,6 +5,7 @@ import AppHeader from '@/components/AppHeader'
 import SectorPicker from '@/components/SectorPicker'
 import NRGrid from '@/components/NRGrid'
 import FloatingButton from '@/components/FloatingButton'
+import WelcomeModal from '@/components/WelcomeModal'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,7 @@ export default async function HomePage({ searchParams }: PageProps) {
         <main>
           <SectorPicker sectors={sectors || []} />
         </main>
+        <WelcomeModal />
         <FloatingButton />
       </>
     )
@@ -58,6 +60,7 @@ export default async function HomePage({ searchParams }: PageProps) {
             Voltar ao inicio
           </a>
         </main>
+        <WelcomeModal />
         <FloatingButton />
       </>
     )
@@ -92,6 +95,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       <main>
         <NRGrid nrs={enriched} sectorSlug={sector.slug} sectorName={sector.name} progress={progress} />
       </main>
+      <WelcomeModal />
       <FloatingButton />
     </>
   )

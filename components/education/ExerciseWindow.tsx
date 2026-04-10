@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { TypewriterOutput } from './TypewriterOutput'
 import { safeEval, formatResult } from '@/lib/safe-eval'
+import { trackEvent } from '@/lib/track-event'
 
 /* ═══════════════════════════════════════════════════════════
    ExerciseWindow — Portado 1:1 do iconsaiStats.
@@ -106,6 +107,7 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
 
       setSubmissionId(data.submissionId)
       setScore(data.score)
+      trackEvent('exercise_submit', { exerciseId, score: data.score, isCorrect: data.isCorrect })
 
       if (data.isCorrect) {
         setOutput(data.executionOutput || 'Resposta correta! Parabéns!')

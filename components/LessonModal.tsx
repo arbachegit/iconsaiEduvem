@@ -5,6 +5,7 @@ import { X, Sparkles, Sprout, Mountain, Flame, Skull } from 'lucide-react'
 import LessonView, { type LessonSection } from './LessonView'
 import DifficultyFooter from './DifficultyFooter'
 import { getSectorMeta } from '@/lib/sectors-meta'
+import { trackEvent } from '@/lib/track-event'
 
 /* ═══════════════════════════════════════════════════════════
    LessonModal — modal horizontal canonico (padrao stats)
@@ -89,6 +90,9 @@ export default function LessonModal({
   const [verbIdx, setVerbIdx] = useState(0)
   const [difficultyCounts, setDifficultyCounts] = useState({ easier: 0, same: 0, harder: 0 })
 
+  // Track duration for lesson_close
+  const openedAtRef = useRef(Date.now())
+
   // Generation guard — invalida respostas antigas em troca de difficulty
   const generationRef = useRef(0)
 
@@ -100,12 +104,23 @@ export default function LessonModal({
     key: null, count: 0, lastTs: 0,
   })
 
+  // ── Close with tracking ──────────────────────────────────
+  const handleClose = useCallback(() => {
+    trackEvent('lesson_close', {
+      nrId,
+      duration_ms: Date.now() - openedAtRef.current,
+      sectionsLoaded: sections.length,
+      completed: sections.length >= 6,
+    })
+    onClose()
+  }, [nrId, sections.length, onClose])
+
   // ── Esc fecha ────────────────────────────────────────────
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
     document.addEventListener('keydown', h)
     return () => document.removeEventListener('keydown', h)
-  }, [onClose])
+  }, [handleClose])
 
   // Bloqueia scroll do body
   useEffect(() => {
@@ -152,6 +167,7 @@ export default function LessonModal({
       setSections([fastJson.section1])
       setLessonId(fastJson.lessonId)
       setStage1Loading(false)
+      trackEvent('lesson_open', { nrId, nrCode, sector: sectorSlug, difficulty: currentDifficulty })
       setDifficultyCounts(prev => ({ ...prev, [currentDifficulty]: prev[currentDifficulty as keyof typeof prev] + 1 }))
 
       // STAGE 2 — idem, minimum delay
@@ -205,11 +221,15 @@ export default function LessonModal({
 
     if (tracker.count >= 5 && !phdUnlocked) {
       setPhdUnlocked(true)
+      trackEvent('difficulty_change', { nrId, from: currentDifficulty, to: 'phd' })
       setCurrentDifficulty('phd')
       tracker.count = 0
       return
     }
-    if (key !== currentDifficulty) setCurrentDifficulty(key)
+    if (key !== currentDifficulty) {
+      trackEvent('difficulty_change', { nrId, from: currentDifficulty, to: key })
+      setCurrentDifficulty(key)
+    }
   }
 
   // ── Render ───────────────────────────────────────────────
@@ -219,7 +239,7 @@ export default function LessonModal({
 
   return (
     <div
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
       style={{
         position: 'fixed', inset: 0, zIndex: 1200,
         background: 'rgba(2, 6, 23, 0.85)', backdropFilter: 'blur(6px)',
@@ -342,7 +362,7 @@ export default function LessonModal({
 
           {/* Fechar */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Fechar aula"
             style={{
               background: 'transparent', border: '1px solid #1e293b', borderRadius: 8,

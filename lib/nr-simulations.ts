@@ -27,7 +27,7 @@ export interface SimulationDefinition {
 
 function makeSim(nrId: number, title: string, subtitle: string, config: WorkerLabConfig): SimulationDefinition {
   // Componente "aplicado" — config fechada via closure. Ref estavel.
-  const Component: ComponentType = () => createElement(WorkerLab, { config })
+  const Component: ComponentType = () => createElement(WorkerLab, { config, nrId })
   Component.displayName = `WorkerLabNR${nrId}`
   return { id: `nr${nrId}-lab`, nrId, title, subtitle, Component }
 }
