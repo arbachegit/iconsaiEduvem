@@ -31,6 +31,18 @@ const THINKING_VERBS_STAGE2 = [
   'Garimpando casos reais', 'Refinando passo a passo', 'Calibrando',
 ]
 
+// Tempos minimos de "processamento" pra manter a sensacao de sistema vivo
+// mesmo quando a resposta vem do cache em milissegundos.
+// Canon: "Sempre deixar um tempo de 10 a 15 segundos processando."
+const STAGE1_MIN_MS = 4000      // seção 1 aparece depois de 4s minimo
+const STAGE2_MIN_MS = 9000      // seções 2-6 aparecem depois de +9s (total ~13s)
+
+async function waitAtLeast(startedAt: number, minMs: number): Promise<void> {
+  const elapsed = Date.now() - startedAt
+  if (elapsed >= minMs) return
+  return new Promise(r => setTimeout(r, minMs - elapsed))
+}
+
 const DIFFICULTY_OPTIONS: Array<{
   key: Difficulty
   label: string
@@ -119,7 +131,8 @@ export default function LessonModal({
     setStage1Loading(true)
 
     try {
-      // STAGE 1
+      // STAGE 1 — conditional minimum delay pra "sentir vivo"
+      const stage1Started = Date.now()
       const fastRes = await fetch('/api/eduven/lesson-fast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -129,12 +142,17 @@ export default function LessonModal({
       if (generationRef.current !== genId) return    // cancelado por troca de difficulty
       if (!fastRes.ok) throw new Error(fastJson?.error || 'Falha ao gerar inicio da aula')
 
+      // Se veio do cache em menos de STAGE1_MIN_MS, espera o complemento
+      await waitAtLeast(stage1Started, STAGE1_MIN_MS)
+      if (generationRef.current !== genId) return
+
       setTitle(fastJson.title)
       setSections([fastJson.section1])
       setLessonId(fastJson.lessonId)
       setStage1Loading(false)
 
-      // STAGE 2
+      // STAGE 2 — idem, minimum delay
+      const stage2Started = Date.now()
       setRestLoading(true)
       const restRes = await fetch('/api/eduven/lesson-rest', {
         method: 'POST',
@@ -144,6 +162,9 @@ export default function LessonModal({
       const restJson = await restRes.json()
       if (generationRef.current !== genId) return
       if (!restRes.ok) throw new Error(restJson?.error || 'Falha ao gerar restante da aula')
+
+      await waitAtLeast(stage2Started, STAGE2_MIN_MS)
+      if (generationRef.current !== genId) return
 
       setSections(prev => [...prev, ...(restJson.sections || [])])
       if (restJson.exerciseIds) setExerciseIds(restJson.exerciseIds)

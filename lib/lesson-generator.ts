@@ -29,6 +29,7 @@ import {
   type SectorContext,
 } from '@/data/domain-configs/nr'
 import { enrichWithExercises, type EnrichedSection } from './exercise-generator'
+import { pickRandomCachedLesson, bumpViewCount } from './lesson-cache'
 
 export interface LessonSection {
   index: number
@@ -136,7 +137,29 @@ export async function generateLessonFast(nrId: number, options: FastOptions): Pr
 
   const [nr, sector] = await Promise.all([loadNR(nrId), loadSector(options.sector)])
 
-  // RAG
+  // ═══ CACHE-FIRST ═══ tenta pegar variacao pre-gerada random
+  const cached = await pickRandomCachedLesson(nr.id, sector.id, difficulty)
+  if (cached && cached.sections.length >= 1) {
+    bumpViewCount(cached.id)
+    const section1 = cached.sections.find(s => s.index === 1) || cached.sections[0]
+    return {
+      lessonId: cached.id,
+      nrId: nr.id,
+      nrCode: nr.code,
+      nrTitle: nr.title,
+      sectorId: sector.id,
+      sectorSlug: sector.slug,
+      sectorName: sector.name,
+      difficulty,
+      title: cached.title,
+      section1,
+      ragChunksUsed: cached.rag_chunks_used,
+      provider: 'unknown',    // cached — nao tem provider atual
+      generationMs: Date.now() - t0,
+    }
+  }
+
+  // CACHE MISS — gera live
   const rag = await queryNR(`${nr.code} ${nr.title} ${sector.name}`, {
     nrId,
     topK: NR_RAG_CONFIG.lessonGeneration.topK,
@@ -235,10 +258,26 @@ export async function generateLessonRest(options: RestOptions): Promise<LessonRe
   }
 
   if (lesson.sections.length >= 6) {
-    // Ja completa — retorna 2-6 do que ja tem (idempotencia)
+    // Ja completa — retorna 2-6 do que ja tem (idempotencia + cache hit do pregenerated).
+    // Cobre 2 casos:
+    //   1. Usuario recarregou a mesma aula (idempotencia)
+    //   2. lesson-fast retornou um cached pregenerated — todas as 6 secoes ja existem
+    const sections26 = lesson.sections.filter(s => s.index >= 2)
+    // Busca exerciseIds existentes pra essa lesson (pre-gerada ja populou)
+    const { data: existingExercises } = await db
+      .from('exercises')
+      .select('id, section_index')
+      .eq('lesson_id', lesson.id)
+    const exerciseIds: Record<number, number> = {}
+    if (existingExercises) {
+      for (const ex of existingExercises as Array<{ id: number; section_index: number }>) {
+        exerciseIds[ex.section_index] = ex.id
+      }
+    }
     return {
       lessonId: lesson.id,
-      sections: lesson.sections.filter(s => s.index >= 2),
+      sections: sections26,
+      exerciseIds,
       ragChunksUsed: lesson.rag_chunks_used,
       provider: 'unknown',
       generationMs: 0,
