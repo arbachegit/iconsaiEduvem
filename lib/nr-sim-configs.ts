@@ -590,25 +590,138 @@ function genericFire(o: GenericOpts): WorkerLabConfig {
 }
 
 /** SAUDE/HOSPITALAR — mascara, luva esteril, face shield, avental descartavel. Riscos: biological. */
+/** SAUDE — items contextuais: exames, paramentacao, vacinacao. COM fullName e description. */
 function genericHealth(o: GenericOpts): WorkerLabConfig {
+  // NR-07 (PCMSO escritorio) vs NR-32 (hospital) — items diferentes
+  const isHospital = o.nrCode === 'NR-32'
+
+  if (isHospital) {
+    return {
+      sliderLabel: 'Paramentação hospitalar',
+      sliderTicks: ['Sem barreira', 'Luvas', '+Máscara', 'Completa'],
+      defaultBackground: 'hospital',
+      items: [
+        {
+          id: 'gloves', label: 'Luvas', workerProp: 'gloves',
+          fullName: 'Luva de procedimento (nitrilo ou látex, sem pó)',
+          description: 'Barreira primária contra contato com sangue, fluidos e mucosas. Trocar a cada paciente.',
+          normRef: 'NR-32, item 32.2.4.6 — obrigatória em todo procedimento com risco biológico.',
+          risksRemoved: ['handCuts'],
+          riskReduction: 8, complianceWeight: 20, lifeYearsAdded: 3, fineReduction: 800,
+          tutorAdded: 'Luva de nitrilo: R$ 0,50 o par. Hepatite B sem luva: tratamento de R$ 40 mil + 6 meses.',
+          tutorRemoved: 'Sem luva, qualquer respingo de sangue na pele com microlesão é porta de entrada.',
+        },
+        {
+          id: 'mask', label: 'Máscara', workerProp: 'mask',
+          fullName: 'Máscara N95/PFF2 com válvula ou Máscara Cirúrgica',
+          description: 'Filtra aerossóis e gotículas. N95 pra tuberculose/COVID. Cirúrgica pra procedimentos padrão.',
+          normRef: 'NR-32, item 32.2.4.16 — NR-32 exige máscara adequada ao risco biológico presente.',
+          risksRemoved: ['breathing'],
+          riskReduction: 8, complianceWeight: 20, lifeYearsAdded: 4, fineReduction: 700,
+          tutorAdded: 'N95 filtra 95% das partículas. Sem ela, tuberculose pulmonar é risco real em enfermaria.',
+          tutorRemoved: 'Sem máscara, cada paciente que tosse é uma roleta. Tuberculose leva 6 meses pra tratar.',
+        },
+        {
+          id: 'goggles', label: 'Óculos/Face Shield', workerProp: 'goggles',
+          fullName: 'Óculos de proteção ou Face Shield (protetor facial)',
+          description: 'Protege mucosa ocular contra respingos de sangue e fluidos durante procedimentos.',
+          normRef: 'NR-32, item 32.2.4 — proteção da face obrigatória em procedimentos com risco de respingo.',
+          risksRemoved: ['chemical'],
+          riskReduction: 5, complianceWeight: 15, lifeYearsAdded: 2, fineReduction: 500,
+          tutorAdded: 'Face Shield cobre olho, nariz e boca de uma vez. Essencial em aspiração e intubação.',
+          tutorRemoved: 'Olho é mucosa. Respingo de sangue no olho = exposição tão grave quanto agulha.',
+        },
+        {
+          id: 'apron', label: 'Avental', workerProp: 'apron',
+          fullName: 'Avental impermeável descartável (capote/jaleco)',
+          description: 'Barreira contra respingos no tronco. Descartável após cada procedimento contaminado.',
+          normRef: 'NR-32, item 32.2.4 — avental impermeável obrigatório quando há risco de contato com fluidos.',
+          riskReduction: 4, complianceWeight: 15, lifeYearsAdded: 1, fineReduction: 400,
+          tutorAdded: 'Avental descartável. Sai da área contaminada, tira e descarta. Nunca leva pra casa.',
+          tutorRemoved: 'Sem avental, a roupa vira vetor. Você leva o hospital pra casa — literalmente.',
+        },
+        {
+          id: 'firstAid', label: 'Perfurocortante',
+          fullName: 'Caixa coletora de perfurocortantes (Descarpack)',
+          description: 'Descarte seguro de agulhas, lâminas e bisturis. NUNCA reencapar agulha.',
+          normRef: 'NR-32, item 32.2.4.17 — é PROIBIDO reencapar agulhas. Descarte imediato na caixa.',
+          riskReduction: 7, complianceWeight: 20, lifeYearsAdded: 4, fineReduction: 600,
+          tutorAdded: '70% dos acidentes com perfurocortante acontecem no reencape. Caixa ao lado = zero reencape.',
+          tutorRemoved: 'Sem caixa, agulha solta na bandeja. Próximo profissional que mexer se fura.',
+        },
+        {
+          id: 'periodicExam', label: 'Vacinação',
+          fullName: 'Vacinação obrigatória (Hepatite B + tétano + outras)',
+          description: 'NR-32 exige vacinação contra Hepatite B, tétano e difteria. Empresa deve fornecer gratuitamente.',
+          normRef: 'NR-32, item 32.2.4.17.1 — vacinação é obrigação da EMPRESA, não do trabalhador.',
+          riskReduction: 8, complianceWeight: 10, lifeYearsAdded: 6, fineReduction: 500,
+          tutorAdded: 'Vacina de Hepatite B: 3 doses, 100% de proteção. Sem ela, 1 agulhada pode ser fatal.',
+          tutorRemoved: 'Sem vacina, cada acidente com perfurocortante é emergência médica com profilaxia pós-exposição.',
+        },
+      ],
+      baseStats: { riskFatal: 38, compliance: 0, fineEstimate: 3800, lifeExpectancy: 58 },
+      baseRisks: { chemical: true, handCuts: true, breathing: true },
+      tutorEmpty: `Serviço de saúde sem paramentação é negligência. ${o.criticalStat} [${o.keyCite}]. 1 em cada 300 acidentes com agulha contaminada transmite HIV.`,
+      tutorFull: 'Paramentação completa + caixa de perfurocortantes + vacinação em dia. Isso é o que a NR-32 exige — e é o que separa profissional de saúde protegido de estatística.',
+    }
+  }
+
+  // NR-07 (PCMSO pra escritório/geral)
   return {
-    sliderLabel: 'Paramentação hospitalar',
-    sliderTicks: ['Sem barreira', 'Luvas', '+Máscara +Óculos', 'Completa'],
+    sliderLabel: 'Controle médico ocupacional',
+    sliderTicks: ['Sem programa', 'Básico', 'Estruturado', 'Conforme'],
     defaultBackground: 'hospital',
-    levels: [
-      { label: 'Sem barreira biológica', worker: { mood: 0, risks: { chemical: true, handCuts: true, breathing: true }, backgroundHint: 'office' },
-        stats: { riskGrade: 'Crítico', fatalRisk: 38, compliance: 0, fineEstimate: 3800, lifeExpectancy: 58 },
-        tutor: { headline: `Sangue, agulha, fluido — sem barreira é roleta.`, detail: `${o.topic}: ${o.criticalStat} [${o.keyCite}]. Risco de hepatite B, C e HIV por perfurocortante.`, warning: '1 em cada 300 acidentes com agulha contaminada transmite HIV.' } },
-      { label: 'Luvas de procedimento', worker: { mood: 0.35, gloves: true, boots: true, risks: { breathing: true, chemical: true }, backgroundHint: 'office' },
-        stats: { riskGrade: 'Alto', fatalRisk: 22, compliance: 30, fineEstimate: 2200, lifeExpectancy: 65 },
-        tutor: { headline: 'Mãos protegidas, rosto exposto.', detail: `Luvas cortam contato dérmico mas sem máscara e óculos a mucosa é porta de entrada [${o.keyCite}].` } },
-      { label: '+Máscara +Óculos', worker: { mood: 0.7, gloves: true, boots: true, mask: true, goggles: true, backgroundHint: 'office' },
-        stats: { riskGrade: 'Médio', fatalRisk: 9, compliance: 70, fineEstimate: 800, lifeExpectancy: 73 },
-        tutor: { headline: 'Barreira respiratória + ocular + luvas.', detail: `Falta o avental impermeável pra respingos e o descartável pós-procedimento [${o.keyCite}].` } },
-      { label: 'Paramentação completa', worker: { mood: 1, gloves: true, boots: true, mask: true, goggles: true, apron: true, backgroundHint: 'office' },
-        stats: { riskGrade: 'Baixo', fatalRisk: 2, compliance: 100, fineEstimate: 0, lifeExpectancy: 78 },
-        tutor: { headline: 'Luvas + máscara + óculos + avental + descarte correto.', detail: `${o.nrCode} cumprida. Protocolo de exposição acidental documentado.` } },
+    items: [
+      {
+        id: 'periodicExam', label: 'Admissional',
+        fullName: 'Exame médico admissional (ASO)',
+        description: 'Avalia se o trabalhador está APTO pra função ANTES de começar. Obrigatório.',
+        normRef: 'NR-7, item 7.5.2 — ASO = Atestado de Saúde Ocupacional. Empresa paga.',
+        riskReduction: 3, complianceWeight: 20, lifeYearsAdded: 2, fineReduction: 600,
+        tutorAdded: 'Admissional detecta condição pré-existente que a função pode agravar. Sem ele, a empresa assume o risco.',
+        tutorRemoved: 'Sem admissional, se o trabalhador já tinha LER e piora, a empresa responde integralmente.',
+      },
+      {
+        id: 'firstAid', label: 'Periódico',
+        fullName: 'Exame médico periódico (anual ou bianual)',
+        description: 'Monitora a saúde ao longo do tempo. Detecta doença ocupacional cedo.',
+        normRef: 'NR-7, item 7.5.3 — periodicidade: anual pra maiores de 45 anos, bianual pra demais.',
+        riskReduction: 4, complianceWeight: 25, lifeYearsAdded: 4, fineReduction: 700,
+        tutorAdded: 'Periódico é o radar. Pega LER, perda auditiva, estresse — tudo antes de virar afastamento.',
+        tutorRemoved: 'Sem periódico, a doença evolui em silêncio. Quando aparece, já é invalidez.',
+      },
+      {
+        id: 'signaling', label: 'Demissional',
+        fullName: 'Exame médico demissional',
+        description: 'Compara o estado de saúde com o admissional. Protege empresa E trabalhador.',
+        normRef: 'NR-7, item 7.5.5 — obrigatório até 10 dias após a data de desligamento.',
+        riskReduction: 2, complianceWeight: 15, lifeYearsAdded: 1, fineReduction: 500,
+        tutorAdded: 'Demissional fecha o ciclo. Se o trabalhador adoeceu durante o contrato, aparece aqui.',
+        tutorRemoved: 'Sem demissional, o ex-funcionário processa 2 anos depois dizendo que ficou doente na empresa. Sem prova.',
+      },
+      {
+        id: 'ergonomicChair', label: 'PCMSO doc',
+        fullName: 'PCMSO documentado (programa escrito pelo médico do trabalho)',
+        description: 'Documento que planeja TODOS os exames e ações de saúde da empresa.',
+        normRef: 'NR-7, item 7.4.1 — o PCMSO é o Programa de Controle Médico de Saúde Ocupacional. Toda empresa CLT precisa ter.',
+        riskReduction: 2, complianceWeight: 25, lifeYearsAdded: 3, fineReduction: 700,
+        tutorAdded: 'PCMSO é o documento mestre. Sem ele, os exames não têm base legal — e a multa é certa.',
+        tutorRemoved: 'Sem PCMSO documentado, qualquer exame que a empresa faça não tem validade legal.',
+      },
+      {
+        id: 'breaks', label: 'Ginástica laboral',
+        fullName: 'Ginástica laboral e programa de promoção da saúde',
+        description: 'Exercícios leves no local de trabalho. Reduz LER, estresse e absenteísmo.',
+        normRef: 'NR-7 + NR-17 — não é obrigatória por lei, mas reduz afastamentos em até 30%.',
+        riskReduction: 1, complianceWeight: 15, lifeYearsAdded: 2, fineReduction: 300,
+        tutorAdded: 'Ginástica laboral de 15 min/dia reduz afastamento por LER em 30%. Retorno sobre investimento: 3x.',
+        tutorRemoved: 'Sem atividade preventiva, o corpo cobra a conta em 2-3 anos de trabalho sedentário.',
+      },
     ],
+    baseStats: { riskFatal: 12, compliance: 0, fineEstimate: 3200, lifeExpectancy: 62 },
+    baseRisks: { bodyImpact: true },
+    tutorEmpty: `Empresa sem PCMSO é empresa vulnerável. ${o.topic}: ${o.criticalStat} [${o.keyCite}]. O programa custa centavos por funcionário — o processo trabalhista custa milhares.`,
+    tutorFull: 'PCMSO completo: admissional + periódico + demissional + programa documentado + ginástica laboral. Isso é saúde ocupacional de verdade — não papel pra auditor.',
   }
 }
 

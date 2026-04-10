@@ -467,11 +467,11 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
           <div style={{ flex: 1, minWidth: 0 }}>
             <div key={`${selected.size}-${lastAction?.id}`} className="fadeIn"
               style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3, marginBottom: 6 }}>
-              {tutorText}
+              <TutorTextWithCitations text={tutorText} />
             </div>
             {tutorDetail && (
               <div style={{ fontSize: 14, lineHeight: 1.65, color: '#cbd5e1' }}>
-                {tutorDetail}
+                <TutorTextWithCitations text={tutorDetail} />
               </div>
             )}
             {tutorWarning && (
@@ -484,7 +484,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
                 display: 'flex', alignItems: 'flex-start', gap: 8,
               }}>
                 <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
-                <span><strong>Cuidado:</strong> {tutorWarning}</span>
+                <span><strong>Cuidado:</strong> <TutorTextWithCitations text={tutorWarning} /></span>
               </div>
             )}
             {tutorSuggestion && (
@@ -496,7 +496,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
                 fontSize: 13, color: '#94a3b8', lineHeight: 1.5,
                 fontStyle: 'italic',
               }}>
-                <strong style={{ color: ACCENT, fontStyle: 'normal' }}>↗ Tenta isso:</strong> {tutorSuggestion}
+                <strong style={{ color: ACCENT, fontStyle: 'normal' }}>↗ Tenta isso:</strong> <TutorTextWithCitations text={tutorSuggestion} />
               </div>
             )}
           </div>
@@ -506,6 +506,122 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * TutorTextWithCitations — transforma [NR-X, item Y.Z] em links clicáveis
+ * que abrem um modal explicando o item via Claude (/api/eduven/term-explain).
+ */
+function TutorTextWithCitations({ text }: { text: string }) {
+  const [modalTerm, setModalTerm] = useState<string | null>(null)
+  const [modalContent, setModalContent] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const openCitation = async (cite: string) => {
+    setModalTerm(cite)
+    setLoading(true)
+    setModalContent(null)
+    try {
+      const res = await fetch('/api/eduven/term-explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ term: cite, lessonContext: `Citação normativa: ${cite}` }),
+      })
+      const data = await res.json()
+      const c = data.content
+      if (c) {
+        setModalContent([c.whatIs, c.howItWorks, c.whyItMatters, c.realExample].filter(Boolean).join('\n\n'))
+      } else {
+        setModalContent('Não foi possível carregar a explicação.')
+      }
+    } catch {
+      setModalContent('Erro ao buscar explicação.')
+    }
+    setLoading(false)
+  }
+
+  // Split text por citações [NR-X, ...]
+  const parts = text.split(/(\[NR-\d+[^\]]*\])/g)
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const match = part.match(/^\[(NR-\d+[^\]]*)\]$/)
+        if (match) {
+          return (
+            <button
+              key={i}
+              onClick={(e) => { e.stopPropagation(); openCitation(match[1]) }}
+              style={{
+                display: 'inline', padding: '1px 6px', margin: '0 2px',
+                borderRadius: 4, border: `1px solid ${ACCENT}44`,
+                background: `${ACCENT}15`, color: ACCENT,
+                fontSize: 'inherit', fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 600, cursor: 'pointer',
+                textDecoration: 'underline', textDecorationStyle: 'dotted',
+                textUnderlineOffset: '2px',
+              }}
+              title={`Clique pra saber mais sobre ${match[1]}`}
+            >
+              {match[1]}
+            </button>
+          )
+        }
+        return <span key={i}>{part}</span>
+      })}
+
+      {/* Modal de citação */}
+      {modalTerm && (
+        <div
+          onClick={() => setModalTerm(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1400,
+            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#0c1320', border: `1px solid ${ACCENT}55`,
+              borderRadius: 14, padding: '24px 28px',
+              maxWidth: 560, width: '100%', maxHeight: '70vh', overflowY: 'auto',
+            }}
+          >
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: ACCENT,
+              textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
+            }}>
+              Referência normativa
+            </div>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#e2e8f0', marginBottom: 16 }}>
+              {modalTerm}
+            </h3>
+            {loading && (
+              <div style={{ color: '#64748b', fontSize: 14 }}>Buscando explicação...</div>
+            )}
+            {modalContent && (
+              <div style={{ fontSize: 14, lineHeight: 1.7, color: '#cbd5e1', whiteSpace: 'pre-wrap' }}>
+                {modalContent}
+              </div>
+            )}
+            <button
+              onClick={() => setModalTerm(null)}
+              style={{
+                marginTop: 20, padding: '8px 20px', borderRadius: 8,
+                border: `1px solid ${ACCENT}`, background: 'transparent',
+                color: ACCENT, fontWeight: 700, fontSize: 13,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
