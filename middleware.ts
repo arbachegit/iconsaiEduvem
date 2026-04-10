@@ -28,6 +28,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
+    pathname.startsWith('/admin') ||
     pathname.includes('/health') ||
     pathname.includes('/version') ||
     pathname.includes('/favicon') ||

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { X, Sparkles, Sprout, Mountain, Flame, Skull } from 'lucide-react'
 import LessonView, { type LessonSection } from './LessonView'
+import DifficultyFooter from './DifficultyFooter'
 import { getSectorMeta } from '@/lib/sectors-meta'
 
 /* ═══════════════════════════════════════════════════════════
@@ -86,6 +87,7 @@ export default function LessonModal({
   const [error, setError] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [verbIdx, setVerbIdx] = useState(0)
+  const [difficultyCounts, setDifficultyCounts] = useState({ easier: 0, same: 0, harder: 0 })
 
   // Generation guard — invalida respostas antigas em troca de difficulty
   const generationRef = useRef(0)
@@ -150,6 +152,7 @@ export default function LessonModal({
       setSections([fastJson.section1])
       setLessonId(fastJson.lessonId)
       setStage1Loading(false)
+      setDifficultyCounts(prev => ({ ...prev, [currentDifficulty]: prev[currentDifficulty as keyof typeof prev] + 1 }))
 
       // STAGE 2 — idem, minimum delay
       const stage2Started = Date.now()
@@ -398,6 +401,9 @@ export default function LessonModal({
               renderizado DENTRO do LessonView, no topo do content. Nao ha
               SimulationLab renderizado no fim do modal. */}
         </div>
+
+        {/* ═══ DIFFICULTY FOOTER ═══ */}
+        <DifficultyFooter counts={difficultyCounts} currentDifficulty={currentDifficulty} />
       </div>
 
       <style>{`
