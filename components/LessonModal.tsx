@@ -217,6 +217,10 @@ export default function LessonModal({
           padding: '14px 20px', borderBottom: '1px solid #1e293b',
           background: `linear-gradient(135deg, ${accent}0F, ${accent}03)`,
         }}>
+          {/* Logo i.ai a esquerda do titulo */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/i.ai.svg" alt="i.ai" style={{ height: 36, width: 36, flexShrink: 0 }} />
+
           {/* Titulo */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
@@ -302,6 +306,15 @@ export default function LessonModal({
 
           {/* Canon: unica chamada do laboratorio e o LabCallout/LabBanner no topo do body.
               Nao renderizar botao Laboratorio no header. */}
+
+          {/* Logo ai.t tutor (entre difficulty e X) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/ait.svg"
+            alt="Learn by ai.t tutor"
+            style={{ height: 32, flexShrink: 0, opacity: 0.9 }}
+            title="Learn by ai.t tutor"
+          />
 
           {/* Fechar */}
           <button

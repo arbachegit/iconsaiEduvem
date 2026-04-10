@@ -58,6 +58,32 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
     })
   }
 
+  /**
+   * Handler do botao "Calcular": avalia a ultima linha da textarea que termina com =
+   * e substitui o resultado na mesma linha. Funciona igual ao Tab/Enter reativo mas
+   * de forma explicita — para alunos que nao descobrem o atalho do teclado.
+   */
+  const handleCalcular = () => {
+    const lines = userInput.split('\n')
+    // Busca de tras pra frente a ultima linha que termina com =
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i]
+      const match = line.match(/^(.*?)=\s*$/)
+      if (!match) continue
+      const leftSide = match[1].trim()
+      if (!leftSide) continue
+      const result = safeEval(leftSide)
+      if (result === null) continue
+      const formatted = formatResult(result)
+      lines[i] = line.replace(/=\s*$/, '= ') + formatted
+      setUserInput(lines.join('\n'))
+      return
+    }
+    // Nenhuma linha com = valida — flash visual no output (sem quebrar)
+    setOutput('Nada pra calcular. Escreva uma expressão terminada em "=" e clique Calcular.')
+    setState('idle')
+  }
+
   const handleExecute = async () => {
     if (!userInput.trim()) return
     setState('executing')
@@ -127,20 +153,8 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
         <div style={{ fontSize: 15, color: '#e2e8f0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
           {prompt}
         </div>
-        {hints.length > 0 && (
-          <button
-            onClick={() => setShowHints(!showHints)}
-            style={{
-              marginTop: 8, padding: '4px 12px', fontSize: 12, color: '#64748b',
-              background: 'none', border: '1px solid #334155', borderRadius: 6, cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            {showHints ? 'Ocultar dicas' : `Ver dicas (${hints.length})`}
-          </button>
-        )}
-        {showHints && (
-          <ul style={{ margin: '8px 0 0', paddingLeft: 20, color: '#94a3b8', fontSize: 13 }}>
+        {showHints && hints.length > 0 && (
+          <ul style={{ margin: '12px 0 0', paddingLeft: 20, color: '#94a3b8', fontSize: 13 }}>
             {hints.map((h, i) => <li key={i} style={{ marginBottom: 4 }}>{h}</li>)}
           </ul>
         )}
@@ -167,39 +181,85 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
         />
       </div>
 
+      {/* Action row: 4 botoes de mesmo tamanho */}
       <div style={{
-        display: 'flex', gap: 12, padding: '12px 16px',
+        display: 'flex', gap: 10, padding: '12px 16px',
         background: '#0c1320', borderTop: '1px solid #1e293b', borderBottom: '1px solid #1e293b',
+        flexWrap: 'wrap',
       }}>
+        {/* Ver dicas — agora mesmo tamanho dos outros */}
+        {hints.length > 0 && (
+          <button
+            onClick={() => setShowHints(!showHints)}
+            style={{
+              padding: '10px 20px', borderRadius: 8,
+              border: '1px solid #64748b',
+              background: showHints ? 'rgba(100,116,139,0.2)' : 'transparent',
+              color: '#94a3b8',
+              fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              minWidth: 140,
+            }}
+          >
+            {showHints ? 'Ocultar dicas' : `Ver dicas (${hints.length})`}
+          </button>
+        )}
+
+        {/* Calcular — explicita o = reativo pra quem nao sabe do Tab/Enter */}
+        <button
+          onClick={handleCalcular}
+          disabled={!userInput.trim() || state === 'executing' || state === 'debugging'}
+          style={{
+            padding: '10px 20px', borderRadius: 8,
+            border: '1px solid #a855f7',
+            background: 'transparent',
+            color: '#a855f7',
+            fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif',
+            minWidth: 140,
+            opacity: !userInput.trim() ? 0.4 : 1,
+          }}
+          title='Calcula a ultima expressao que termina com "=" na resposta'
+        >
+          Calcular
+        </button>
+
+        {/* Corrigir (antigo Executar) — Claude avalia a resposta */}
         <button
           onClick={handleExecute}
           disabled={!userInput.trim() || state === 'executing' || state === 'debugging'}
           style={{
-            padding: '10px 24px', borderRadius: 8, border: 'none',
+            padding: '10px 20px', borderRadius: 8, border: 'none',
             background: state === 'executing' ? '#1e293b' : '#22d3ee',
             color: state === 'executing' ? '#64748b' : '#0a0e17',
             fontWeight: 700, fontSize: 14, cursor: state === 'executing' ? 'wait' : 'pointer',
             fontFamily: 'Inter, sans-serif',
+            minWidth: 140,
             opacity: !userInput.trim() ? 0.4 : 1,
           }}
         >
-          {state === 'executing' ? 'Executando...' : 'Executar'}
+          {state === 'executing' ? 'Corrigindo...' : 'Corrigir'}
         </button>
+
+        {/* Debugar — so habilita quando errou */}
         <button
           onClick={handleDebug}
           disabled={state !== 'error' || !submissionId}
           style={{
-            padding: '10px 24px', borderRadius: 8, border: '1px solid #f97316',
+            padding: '10px 20px', borderRadius: 8,
+            border: '1px solid #f97316',
             background: state === 'debugging' ? '#f97316' : 'transparent',
             color: state === 'debugging' ? '#fff' : '#f97316',
             fontWeight: 700, fontSize: 14,
             cursor: state !== 'error' ? 'default' : 'pointer',
             fontFamily: 'Inter, sans-serif',
+            minWidth: 140,
             opacity: state !== 'error' ? 0.3 : 1,
           }}
         >
           {state === 'debugging' ? 'Debugando...' : 'Debugar'}
         </button>
+
         {score !== null && (
           <div style={{
             marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6,
