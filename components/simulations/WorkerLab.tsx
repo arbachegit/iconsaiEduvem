@@ -235,15 +235,54 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
     return ''
   }, [selected, items, lastAction, config])
 
+  // WARNING — sempre ativo quando ha risco. Prioriza config, fallback dinamico.
   const tutorWarning = useMemo(() => {
     const levelIdx = Math.min(3, Math.round((selected.size / Math.max(1, items.length)) * 3))
-    return config.levels?.[levelIdx]?.tutor?.warning || ''
-  }, [selected, items, config])
+    const configWarning = config.levels?.[levelIdx]?.tutor?.warning
 
+    if (configWarning) return configWarning
+
+    // Geracao dinamica baseada no estado
+    if (stats.riskFatal >= 70) {
+      return `Risco fatal em ${stats.riskFatal}%. Cada minuto sem proteção é roleta russa. Não é exagero — é estatística.`
+    }
+    if (stats.riskFatal >= 40) {
+      const missing = items.filter(it => !selected.has(it.id))
+      return `Ainda faltam ${missing.length} itens críticos (${missing.slice(0, 3).map(m => m.label).join(', ')}${missing.length > 3 ? '...' : ''}). Risco em ${stats.riskFatal}% — alto demais pra operar.`
+    }
+    if (stats.riskFatal >= 15) {
+      return `Risco em ${stats.riskFatal}%. Melhorou, mas qualquer descuido vira acidente. Não relaxa agora.`
+    }
+    if (stats.compliance < 100 && selected.size > 0) {
+      return `Conformidade em ${stats.compliance}%. Falta pouco — mas "quase conforme" não passa na auditoria.`
+    }
+    return ''
+  }, [selected, items, config, stats])
+
+  // SUGGESTION — sempre ativo. Guia o proximo passo do aluno.
   const tutorSuggestion = useMemo(() => {
-    if (selected.size === items.length) return config.levels?.[3]?.tutor?.suggestion || ''
     const levelIdx = Math.min(3, Math.round((selected.size / Math.max(1, items.length)) * 3))
-    return config.levels?.[levelIdx]?.tutor?.suggestion || ''
+    const configSuggestion = config.levels?.[levelIdx]?.tutor?.suggestion
+
+    if (configSuggestion) return configSuggestion
+
+    // Geracao dinamica
+    if (selected.size === 0) {
+      const first = items[0]
+      return first ? `Começa pelo ${first.label} — é o item mais básico. Clica e vê o que muda.` : ''
+    }
+    if (selected.size === items.length) {
+      return 'Agora faz o contrário: tira um por um e observa qual item faz mais diferença nos números. Isso é análise de risco na prática.'
+    }
+    // Sugere o proximo item mais impactante (maior riskReduction) que ainda nao foi selecionado
+    const missing = items
+      .filter(it => !selected.has(it.id))
+      .sort((a, b) => b.riskReduction - a.riskReduction)
+    if (missing.length > 0) {
+      const next = missing[0]
+      return `Próximo passo: ativa o ${next.label}. Ele sozinho corta ${next.riskReduction}% do risco fatal e adiciona ${next.lifeYearsAdded} anos na expectativa de vida.`
+    }
+    return ''
   }, [selected, items, config])
 
   const fatalColor = stats.riskFatal >= 60 ? '#ef4444' : stats.riskFatal >= 35 ? '#f97316' : stats.riskFatal > 15 ? '#fbbf24' : '#4ade80'
