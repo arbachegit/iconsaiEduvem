@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { Sprout, Mountain, Flame, FlaskConical, BookOpen, CheckCircle2 } from 'lucide-react'
 import { getSectorMeta } from '@/lib/sectors-meta'
+import type { NRProgress } from '@/lib/student-progress'
 import LessonModal from './LessonModal'
 import NRAnimation from './NRAnimation'
 
@@ -19,6 +21,7 @@ interface NRGridProps {
   nrs: NRWithRelevance[]
   sectorSlug: string
   sectorName: string
+  progress?: Record<number, NRProgress>
 }
 
 const RELEVANCE_LABEL: Record<number, string> = {
@@ -30,7 +33,7 @@ const RELEVANCE_LABEL: Record<number, string> = {
   0: 'Irrelevante',
 }
 
-export default function NRGrid({ nrs, sectorSlug, sectorName }: NRGridProps) {
+export default function NRGrid({ nrs, sectorSlug, sectorName, progress = {} }: NRGridProps) {
   const [openNR, setOpenNR] = useState<NRWithRelevance | null>(null)
   const meta = getSectorMeta(sectorSlug)
   const accentColor = meta?.color || '#22d3ee'
@@ -52,13 +55,13 @@ export default function NRGrid({ nrs, sectorSlug, sectorName }: NRGridProps) {
         </div>
 
         {critical.length > 0 && (
-          <Section title="Criticas e muito relevantes" subtitle="Sao a base da seguranca neste setor. Comece por aqui." color={accentColor} nrs={critical} onOpen={setOpenNR} />
+          <Section title="Criticas e muito relevantes" subtitle="Sao a base da seguranca neste setor. Comece por aqui." color={accentColor} nrs={critical} onOpen={setOpenNR} progress={progress} />
         )}
         {relevant.length > 0 && (
-          <Section title="Relevantes" subtitle="Aplicam-se a parte significativa do dia-a-dia." color="#94a3b8" nrs={relevant} onOpen={setOpenNR} />
+          <Section title="Relevantes" subtitle="Aplicam-se a parte significativa do dia-a-dia." color="#94a3b8" nrs={relevant} onOpen={setOpenNR} progress={progress} />
         )}
         {occasional.length > 0 && (
-          <Section title="Ocasionais e tangenciais" subtitle="Tocam o setor em situacoes especificas." color="#475569" nrs={occasional} onOpen={setOpenNR} />
+          <Section title="Ocasionais e tangenciais" subtitle="Tocam o setor em situacoes especificas." color="#475569" nrs={occasional} onOpen={setOpenNR} progress={progress} />
         )}
         {nrs.length === 0 && (
           <div style={{ textAlign: 'center', padding: 80, color: '#64748b' }}>
@@ -81,12 +84,13 @@ export default function NRGrid({ nrs, sectorSlug, sectorName }: NRGridProps) {
   )
 }
 
-function Section({ title, subtitle, color, nrs, onOpen }: {
+function Section({ title, subtitle, color, nrs, onOpen, progress = {} }: {
   title: string
   subtitle: string
   color: string
   nrs: NRWithRelevance[]
   onOpen: (nr: NRWithRelevance) => void
+  progress?: Record<number, NRProgress>
 }) {
   return (
     <div style={{ marginBottom: 40 }}>
@@ -102,19 +106,23 @@ function Section({ title, subtitle, color, nrs, onOpen }: {
         gap: 14,
       }}>
         {nrs.map((nr, idx) => (
-          <NRCard key={nr.id} nr={nr} color={color} onOpen={onOpen} delay={idx * 0.15} />
+          <NRCard key={nr.id} nr={nr} color={color} onOpen={onOpen} delay={idx * 0.15} progress={progress[nr.id]} />
         ))}
       </div>
     </div>
   )
 }
 
-function NRCard({ nr, color, onOpen, delay }: {
+function NRCard({ nr, color, onOpen, delay, progress }: {
   nr: NRWithRelevance
   color: string
   onOpen: (nr: NRWithRelevance) => void
   delay: number
+  progress?: NRProgress
 }) {
+  const p = progress
+  const hasActivity = p && p.totalSessions > 0
+
   return (
     <button
       onClick={() => onOpen(nr)}
@@ -124,89 +132,146 @@ function NRCard({ nr, color, onOpen, delay }: {
         display: 'flex', flexDirection: 'column',
         textAlign: 'left',
         background: '#0c1320',
-        border: `1px solid ${color}33`,
+        border: `1px solid ${hasActivity ? `${color}66` : `${color}33`}`,
         borderRadius: 14,
         cursor: 'pointer', fontFamily: 'inherit',
-        width: '100%', minHeight: 340,
+        width: '100%', minHeight: 380,
         ['--nr-color' as never]: color,
         ['--nr-delay' as never]: `${delay}s`,
       }}
     >
-      {/* ═══ ANIMATION BANNER (topo) — protagonista do card ═══ */}
+      {/* ═══ ANIMATION BANNER (topo) ═══ */}
       <div style={{
         position: 'relative',
-        width: '100%', height: 140,
+        width: '100%', height: 130,
         background: `linear-gradient(135deg, ${color}1A 0%, ${color}08 50%, transparent 100%)`,
         borderBottom: `1px solid ${color}22`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden',
       }}>
-        {/* Grid pattern de fundo */}
         <div aria-hidden style={{
           position: 'absolute', inset: 0, opacity: 0.4,
           backgroundImage: `radial-gradient(${color}22 1px, transparent 1px)`,
           backgroundSize: '14px 14px',
         }} />
-
-        {/* Shimmer sweep */}
         <span className="nr-shimmer" aria-hidden style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
           background: `linear-gradient(115deg, transparent 40%, ${color}33 50%, transparent 60%)`,
           backgroundSize: '250% 100%',
         }} />
-
-        {/* Animation grande */}
         <div style={{ position: 'relative', zIndex: 2 }}>
-          <NRAnimation nrId={nr.id} color={color} size={96} />
+          <NRAnimation nrId={nr.id} color={color} size={88} />
         </div>
-
-        {/* Badge de relevancia no canto superior direito do banner */}
         <div style={{ position: 'absolute', top: 10, right: 12, zIndex: 3 }}>
           <RelevanceBadge relevance={nr.relevance} />
         </div>
-
-        {/* Code NR-XX no canto superior esquerdo */}
         <div style={{ position: 'absolute', top: 10, left: 12, zIndex: 3 }}>
-          <span
-            className="nr-code"
-            style={{
-              fontSize: 13, fontWeight: 800, color,
-              fontFamily: "'JetBrains Mono', monospace",
-              textShadow: `0 0 12px ${color}88`,
-              padding: '4px 9px', borderRadius: 6,
-              background: `${color}1A`,
-              border: `1px solid ${color}55`,
-            }}
-          >
+          <span className="nr-code" style={{
+            fontSize: 12, fontWeight: 800, color,
+            fontFamily: "'JetBrains Mono', monospace",
+            textShadow: `0 0 12px ${color}88`,
+            padding: '3px 8px', borderRadius: 6,
+            background: `${color}1A`, border: `1px solid ${color}55`,
+          }}>
             {nr.code}
           </span>
         </div>
+        {/* Badge de completude no canto inferior direito do banner */}
+        {p?.completed && (
+          <div style={{
+            position: 'absolute', bottom: 8, right: 12, zIndex: 3,
+            background: '#4ade8022', border: '1px solid #4ade8066',
+            borderRadius: 6, padding: '2px 8px',
+            fontSize: 10, fontWeight: 700, color: '#4ade80',
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}>
+            <CheckCircle2 size={10} /> Completa
+          </div>
+        )}
       </div>
 
-      {/* ═══ CONTEUDO TEXTO (embaixo) ═══ */}
-      <div style={{ padding: '18px 20px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{
-          fontSize: 15, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.35, marginBottom: 10,
-        }}>
+      {/* ═══ CONTEUDO ═══ */}
+      <div style={{ padding: '14px 18px 0', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.35, marginBottom: 8 }}>
           {nr.title}
         </h3>
         {nr.rationale && (
-          <p style={{
-            fontSize: 12, color: '#94a3b8', lineHeight: 1.55, fontStyle: 'italic',
-            flex: 1,
-          }}>
+          <p style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, fontStyle: 'italic', flex: 1 }}>
             {nr.rationale}
           </p>
         )}
+      </div>
+
+      {/* ═══ FOOTER DE PROGRESSO DO ALUNO ═══ */}
+      <div style={{
+        padding: '10px 18px 14px',
+        borderTop: '1px solid rgba(100,116,139,0.15)',
+      }}>
+        {/* Dificuldades */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+          <DiffBadge icon={Sprout} label="Fácil" count={p?.easierCount || 0} color="#22c55e" />
+          <DiffBadge icon={Mountain} label="Médio" count={p?.sameCount || 0} color="#eab308" />
+          <DiffBadge icon={Flame} label="Forte" count={p?.harderCount || 0} color="#f97316" />
+        </div>
+
+        {/* Checklist */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginBottom: 10 }}>
+          <ProgressCheck done={p?.exerciseDone} label="Exercício" />
+          <ProgressCheck done={p?.labInteracted} label="Lab" icon={FlaskConical} />
+          <ProgressCheck done={(p?.sectionsViewed || 0) >= 6} label="6 seções" icon={BookOpen} />
+          <ProgressCheck done={(p?.termsClicked || 0) > 0} label={`${p?.termsClicked || 0} termos`} />
+        </div>
+
+        {/* CTA */}
         <div style={{
-          marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(100,116,139,0.15)',
-          display: 'flex', alignItems: 'center', gap: 6,
           fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.8,
         }}>
-          Abrir aula adaptativa →
+          {hasActivity ? 'Continuar aula →' : 'Abrir aula adaptativa →'}
         </div>
       </div>
     </button>
+  )
+}
+
+function DiffBadge({ icon: Icon, label, count, color }: {
+  icon: React.ComponentType<{ size?: number }>
+  label: string
+  count: number
+  color: string
+}) {
+  const active = count > 0
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 4,
+      opacity: active ? 1 : 0.3,
+      transition: 'opacity 0.2s',
+    }}>
+      <Icon size={12} />
+      <span style={{
+        fontSize: 10, fontWeight: 700, color: active ? color : '#475569',
+        fontFamily: "'JetBrains Mono', monospace",
+      }}>
+        {count}
+      </span>
+      <span style={{ fontSize: 9, color: '#64748b' }}>{label}</span>
+    </div>
+  )
+}
+
+function ProgressCheck({ done, label, icon: Icon }: {
+  done?: boolean
+  label: string
+  icon?: React.ComponentType<{ size?: number }>
+}) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 3,
+      fontSize: 10, color: done ? '#4ade80' : '#475569',
+      fontWeight: done ? 600 : 400,
+    }}>
+      {Icon ? <Icon size={10} /> : <span>{done ? '✓' : '✗'}</span>}
+      <span>{label}</span>
+    </div>
   )
 }
 

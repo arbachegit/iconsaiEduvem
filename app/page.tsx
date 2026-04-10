@@ -1,4 +1,6 @@
+import { cookies } from 'next/headers'
 import { getDb } from '@/lib/db'
+import { getStudentProgress, type NRProgress } from '@/lib/student-progress'
 import AppHeader from '@/components/AppHeader'
 import SectorPicker from '@/components/SectorPicker'
 import NRGrid from '@/components/NRGrid'
@@ -13,6 +15,11 @@ interface PageProps {
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams
   const sectorSlug = params?.sector
+
+  // Identifica aluno pelo cookie persistente (set pelo middleware)
+  const cookieStore = await cookies()
+  const studentId = cookieStore.get('eduven_student_id')?.value || ''
+  const progress = studentId ? await getStudentProgress(studentId) : {}
 
   const db = getDb()
 
@@ -83,7 +90,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     <>
       <AppHeader activeSectorSlug={sector.slug} activeSectorName={sector.name} />
       <main>
-        <NRGrid nrs={enriched} sectorSlug={sector.slug} sectorName={sector.name} />
+        <NRGrid nrs={enriched} sectorSlug={sector.slug} sectorName={sector.name} progress={progress} />
       </main>
       <FloatingButton />
     </>

@@ -19,7 +19,18 @@ const ADMIN_SESSION_COOKIE = process.env.ADMIN_SESSION_COOKIE_NAME || 'course_ad
 export async function middleware(request: NextRequest) {
   // Bypass total — usado em dev local. NUNCA usar em producao.
   if (AUTH_MODE === 'bypass') {
-    return NextResponse.next()
+    const response = NextResponse.next()
+    // Mesmo em bypass, garante student_id cookie pra tracking
+    if (!request.cookies.get('eduven_student_id')) {
+      response.cookies.set('eduven_student_id', crypto.randomUUID(), {
+        httpOnly: false, // client-side precisa ler pra trackEvent
+        secure: false,   // dev local nao tem HTTPS
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60, // 1 ano
+        path: '/',
+      })
+    }
+    return response
   }
 
   const { pathname } = request.nextUrl
@@ -67,7 +78,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(TOOLS_LOGIN_URL))
   }
 
-  if (sessionCookie) return NextResponse.next()
+  if (sessionCookie) {
+    const response = NextResponse.next()
+    if (!request.cookies.get('eduven_student_id')) {
+      response.cookies.set('eduven_student_id', crypto.randomUUID(), {
+        httpOnly: false, secure: true, sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60, path: '/',
+      })
+    }
+    return response
+  }
   return NextResponse.redirect(new URL(TOOLS_LOGIN_URL))
 }
 
