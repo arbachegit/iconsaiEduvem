@@ -15,9 +15,10 @@ if (!url || !key) {
   throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env.local')
 }
 
-let _client: SupabaseClient | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _client: SupabaseClient<any, any, any> | null = null
 
-export function getDb(): SupabaseClient {
+export function getDb() {
   if (!_client) {
     _client = createClient(url!, key!, {
       db: { schema },

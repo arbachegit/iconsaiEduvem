@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * EpiIcons — icones SVG pequenos (24x24) pra cada tipo de EPI/medida de protecao.
  * Usados como botoes toggle no InteractiveLab.
@@ -35,7 +37,7 @@ interface IconProps {
 }
 
 export function EpiIcon({ type, color, size = 24 }: IconProps & { type: EpiType }) {
-  const icons: Record<EpiType, (p: IconProps) => JSX.Element> = {
+  const icons: Record<EpiType, (p: IconProps) => React.ReactElement> = {
     none: NoneIcon,
     helmet: HelmetIcon,
     gloves: GlovesIcon,

@@ -95,8 +95,8 @@ export async function POST(req: NextRequest) {
         voice,
         input: cleaned,
         response_format: 'mp3',
-        // @ts-expect-error — instructions so existe em gpt-4o-mini-tts, nao em tts-1
-        instructions: VOICE_INSTRUCTIONS,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        instructions: VOICE_INSTRUCTIONS as any,
       })
     } catch (err) {
       const msg = (err as Error).message || ''

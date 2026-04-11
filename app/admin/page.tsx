@@ -1,953 +1,444 @@
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
-import { getDb } from '@/lib/db'
+'use client';
 
-export const dynamic = 'force-dynamic'
+import { useState, useEffect, useCallback } from 'react';
+import { Database, Table, Search, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X, Layers, LogOut, GitBranch, Info, BarChart3, FileText } from 'lucide-react';
+import ERDiagram from '@/components/ERDiagram';
+import ReactMarkdown from 'react-markdown';
 
-/* ── types ── */
-interface UserEvent {
-  id: string
-  type: string
-  user_ip: string
-  device_type: string
-  device_os: string
-  device_browser: string
-  screen_width: number
-  screen_height: number
-  timezone: string
-  connection_type: string
-  dark_mode: boolean
-  metadata: Record<string, unknown>
-  created_at: string
-}
+const C = {
+  bg: '#05070d', bg2: '#0c1220', bgCard: 'rgba(15,25,42,0.6)',
+  text: '#eaf0f6', muted: '#94a3b8', dim: '#64748b',
+  cyan: '#00d4ff', border: 'rgba(100,116,139,0.25)',
+  mono: "'JetBrains Mono', monospace",
+  font: "'Inter', sans-serif",
+};
 
-interface DeviceRow { device_type: string; count: number }
-interface LessonRow { nr_code: string; count: number }
-interface DifficultyRow { difficulty: string; count: number }
-interface HourRow { hour: number; count: number }
-interface CountRow { label: string; count: number }
+const TABLE_COLORS: Record<string, string> = {
+  nrs: '#a855f7',
+  nr_chunks: '#22d3ee',
+  nr_raw_sources: '#22c55e',
+  sectors: '#ef4444',
+  nr_sector_relevance: '#fb923c',
+  lessons: '#eab308',
+  exercises: '#3b82f6',
+  submissions: '#ec4899',
+  llm_call_logs: '#64748b',
+  user_events: '#8b5cf6',
+};
 
-interface UserDrillDown {
-  studentId: string
-  lastAccess: string
-  device: string
-  os: string
-  browser: string
-  timezone: string
-  location: string
-  totalSessions: number
-  nrsAccessed: string[]
-  difficultyPreference: string
-  completionRate: number
-}
+const TEXT_COLS = new Set([
+  'description', 'desc', 'content', 'text', 'label', 'title',
+  'source_url', 'error_msg', 'metadata', 'question', 'answer',
+  'explanation', 'options', 'nr_code',
+]);
 
-/* ── styles ── */
-const colors = {
-  bg: '#050d1a',
-  card: '#0c1320',
-  text: '#e2e8f0',
-  muted: '#94a3b8',
-  accent: '#22d3ee',
-  border: 'rgba(100,116,139,0.3)',
-  danger: '#ef4444',
-}
+interface TableInfo { name: string; rows: number; columns: { name: string; type: string; pk: boolean; required: boolean }[] }
+interface TableData { table: string; columns?: string[]; types?: string[]; rows: Record<string, unknown>[]; total: number; limit: number; offset: number }
 
-const cardStyle: React.CSSProperties = {
-  backgroundColor: colors.card,
-  border: `1px solid ${colors.border}`,
-  borderRadius: '12px',
-  padding: '1.5rem',
-}
+export default function AdminPage() {
+  const [authenticated, setAuthenticated] = useState(false);
 
-const statNumber: React.CSSProperties = {
-  fontSize: '2rem',
-  fontWeight: 700,
-  color: colors.accent,
-  margin: 0,
-}
+  const [stats, setStats] = useState<{ totalTables: number; totalRows: number; tables: TableInfo[] } | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [data, setData] = useState<TableData | null>(null);
+  const [page, setPage] = useState(0);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState('');
+  const [order, setOrder] = useState<'ASC' | 'DESC'>('ASC');
+  const [cellModal, setCellModal] = useState<{ col: string; value: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'explorer' | 'diagram'>('explorer');
+  const [saibaMais, setSaibaMais] = useState<{ table: string; description: string; generated_at: string } | null>(null);
+  const [saibaMaisLoading, setSaibaMaisLoading] = useState<string | null>(null);
 
-const statLabel: React.CSSProperties = {
-  fontSize: '0.875rem',
-  color: colors.muted,
-  margin: '0.25rem 0 0 0',
-}
+  const LIMIT = 50;
 
-/* ── timezone → state mapping ── */
-const timezoneToState: Record<string, string> = {
-  'America/Sao_Paulo': 'Sao Paulo',
-  'America/Bahia': 'Bahia',
-  'America/Fortaleza': 'Ceara',
-  'America/Recife': 'Pernambuco',
-  'America/Manaus': 'Amazonas',
-  'America/Belem': 'Para',
-  'America/Cuiaba': 'Mato Grosso',
-  'America/Porto_Velho': 'Rondonia',
-  'America/Campo_Grande': 'Mato Grosso do Sul',
-  'America/Rio_Branco': 'Acre',
-  'America/Araguaina': 'Tocantins',
-  'America/Maceio': 'Alagoas',
-  'America/Noronha': 'Fernando de Noronha',
-}
-
-function resolveLocation(tz: string | null | undefined): string {
-  if (!tz) return 'Desconhecido'
-  return timezoneToState[tz] || tz
-}
-
-function groupAndCount(rows: { value: string }[]): CountRow[] {
-  const map: Record<string, number> = {}
-  for (const r of rows) {
-    const v = r.value || 'unknown'
-    map[v] = (map[v] || 0) + 1
-  }
-  return Object.entries(map)
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count)
-}
-
-/* ── helpers ── */
-async function queryAnalytics() {
-  const db = getDb()
-
-  const empty = {
-    error: null as string | null,
-    totalSessions: 0,
-    uniqueUsers: 0,
-    devices: [] as DeviceRow[],
-    topLessons: [] as LessonRow[],
-    difficulties: [] as DifficultyRow[],
-    peakHours: [] as HourRow[],
-    recentEvents: [] as UserEvent[],
-    osDistribution: [] as CountRow[],
-    browserDistribution: [] as CountRow[],
-    geoDistribution: [] as CountRow[],
-    connectionTypes: [] as CountRow[],
-    screenResolutions: [] as CountRow[],
-    darkModeStats: { dark: 0, light: 0 },
-    completionRate: 0,
-    avgDurationMs: 0,
-    userDrillDown: [] as UserDrillDown[],
-  }
-
-  try {
-    // Total sessions
-    const { count: totalSessions } = await db
-      .from('user_events')
-      .select('*', { count: 'exact', head: true })
-      .eq('type', 'lesson_open')
-
-    // Unique users (distinct user_ip)
-    const { data: uniqueData } = await db
-      .rpc('count_distinct_ips') as { data: { count: number }[] | null }
-    let uniqueUsers = 0
-    if (uniqueData && uniqueData.length > 0) {
-      uniqueUsers = uniqueData[0].count
-    } else {
-      const { data: allIps } = await db
-        .from('user_events')
-        .select('user_ip')
-      if (allIps) {
-        uniqueUsers = new Set(allIps.map((r: { user_ip: string }) => r.user_ip)).size
+  const fetchSaibaMais = useCallback(async (tableName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSaibaMaisLoading(tableName);
+    try {
+      const res = await fetch(`/api/eduven/admin/saiba-mais?table=${tableName}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSaibaMais(data);
       }
+    } catch { /* ignore */ }
+    setSaibaMaisLoading(null);
+  }, []);
+
+  const api = useCallback(async (action: string, params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams({ action, ...params });
+    const res = await fetch(`/api/eduven/admin/db?${qs}`);
+    if (res.status === 401) {
+      document.cookie = 'admin_eduven_session=; Max-Age=0; Path=/';
+      window.location.href = '/admin/login';
+      return null;
     }
+    return res.json();
+  }, []);
 
-    // Fetch all events once for aggregation
-    const { data: allEventsRaw } = await db
-      .from('user_events')
-      .select('type, device_type, device_os, device_browser, screen_width, screen_height, timezone, connection_type, dark_mode, metadata, created_at, session_id, user_ip')
-      .order('created_at', { ascending: false })
+  // Auth check on mount
+  useEffect(() => {
+    // Check if cookie exists by calling API
+    api('auth').then(d => {
+      if (d) setAuthenticated(true);
+    });
+  }, [api]);
 
-    type RawEvent = {
-      type: string
-      device_type: string
-      device_os: string
-      device_browser: string
-      screen_width: number
-      screen_height: number
-      timezone: string
-      connection_type: string
-      dark_mode: boolean
-      metadata: Record<string, unknown>
-      created_at: string
-      session_id: string
-      user_ip: string
+  // Load stats when authenticated
+  useEffect(() => {
+    if (authenticated) { api('stats').then(d => d && setStats(d)); }
+  }, [authenticated, api]);
+
+  const handleLogout = () => {
+    document.cookie = 'admin_eduven_session=; Max-Age=0; Path=/';
+    window.location.href = '/api/eduven/admin/logout';
+  };
+
+  const loadTable = useCallback(async (table: string, offset = 0, s?: string, so?: string, o?: string) => {
+    setLoading(true);
+    const params: Record<string, string> = { table, limit: String(LIMIT), offset: String(offset) };
+    const q = s !== undefined ? s : search;
+    const srt = so !== undefined ? so : sort;
+    const ord = o !== undefined ? o : order;
+    if (q.length >= 2) params.search = q;
+    if (srt) { params.sort = srt; params.order = ord; }
+    const result = await api('rows', params);
+    if (result) setData(result);
+    setLoading(false);
+  }, [api, search, sort, order]);
+
+  const handleSelectTable = (name: string) => {
+    setSelected(name); setPage(0); setSearch(''); setSort(''); setOrder('ASC');
+    loadTable(name, 0, '', '', 'ASC');
+  };
+
+  const handleSearch = (q: string) => {
+    setSearch(q);
+    if ((q.length >= 2 || q.length === 0) && selected) {
+      setPage(0);
+      loadTable(selected, 0, q);
     }
-    const allEvents: RawEvent[] = (allEventsRaw as RawEvent[]) || []
+  };
 
-    // Devices
-    const deviceMap: Record<string, number> = {}
-    for (const row of allEvents) {
-      const dt = row.device_type || 'unknown'
-      deviceMap[dt] = (deviceMap[dt] || 0) + 1
-    }
-    const devices: DeviceRow[] = Object.entries(deviceMap)
-      .map(([device_type, count]) => ({ device_type, count }))
-      .sort((a, b) => b.count - a.count)
+  const handleSort = (col: string) => {
+    const newOrder = sort === col && order === 'ASC' ? 'DESC' : 'ASC';
+    setSort(col); setOrder(newOrder); setPage(0);
+    if (selected) loadTable(selected, 0, search, col, newOrder);
+  };
 
-    // Top lessons
-    const lessonMap: Record<string, number> = {}
-    for (const row of allEvents) {
-      if (row.type !== 'lesson_open') continue
-      const code = (row.metadata?.nr_code as string) || 'unknown'
-      lessonMap[code] = (lessonMap[code] || 0) + 1
-    }
-    const topLessons: LessonRow[] = Object.entries(lessonMap)
-      .map(([nr_code, count]) => ({ nr_code, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10)
+  const handlePage = (dir: number) => {
+    const newPage = page + dir; setPage(newPage);
+    if (selected) loadTable(selected, newPage * LIMIT);
+  };
 
-    // Difficulty
-    const diffMap: Record<string, number> = {}
-    for (const row of allEvents) {
-      if (row.type !== 'lesson_open') continue
-      const diff = (row.metadata?.difficulty as string) || 'unknown'
-      diffMap[diff] = (diffMap[diff] || 0) + 1
-    }
-    const difficulties: DifficultyRow[] = Object.entries(diffMap)
-      .map(([difficulty, count]) => ({ difficulty, count }))
-      .sort((a, b) => b.count - a.count)
+  const truncate = (val: unknown, max = 80): string => {
+    const s = val === null ? 'NULL' : String(val);
+    return s.length > max ? s.substring(0, max) + '...' : s;
+  };
 
-    // Peak hours
-    const hourMap: Record<number, number> = {}
-    for (const row of allEvents) {
-      const h = new Date(row.created_at).getHours()
-      hourMap[h] = (hourMap[h] || 0) + 1
-    }
-    const peakHours: HourRow[] = Object.entries(hourMap)
-      .map(([h, count]) => ({ hour: Number(h), count }))
-      .sort((a, b) => b.count - a.count)
-
-    // OS Distribution
-    const osDistribution = groupAndCount(
-      allEvents.map((r) => ({ value: r.device_os }))
-    )
-
-    // Browser Distribution
-    const browserDistribution = groupAndCount(
-      allEvents.map((r) => ({ value: r.device_browser }))
-    )
-
-    // Geographic Distribution (timezone → state)
-    const geoDistribution = groupAndCount(
-      allEvents.map((r) => ({ value: resolveLocation(r.timezone) }))
-    )
-
-    // Connection Types
-    const connectionTypes = groupAndCount(
-      allEvents.map((r) => ({ value: r.connection_type }))
-    )
-
-    // Screen Resolutions (top 10)
-    const screenResolutions = groupAndCount(
-      allEvents
-        .filter((r) => r.screen_width && r.screen_height)
-        .map((r) => ({ value: `${r.screen_width}x${r.screen_height}` }))
-    ).slice(0, 10)
-
-    // Dark mode stats
-    let darkCount = 0
-    let lightCount = 0
-    for (const row of allEvents) {
-      if (row.dark_mode === true) darkCount++
-      else if (row.dark_mode === false) lightCount++
-    }
-
-    // Completion rate: lesson_open vs lesson_close with completed=true
-    const openCount = allEvents.filter((r) => r.type === 'lesson_open').length
-    const closedCompleted = allEvents.filter(
-      (r) => r.type === 'lesson_close' && r.metadata?.completed === true
-    ).length
-    const completionRate = openCount > 0 ? Math.round((closedCompleted / openCount) * 100) : 0
-
-    // Average duration from lesson_close events
-    const durations = allEvents
-      .filter((r) => r.type === 'lesson_close' && typeof r.metadata?.duration_ms === 'number')
-      .map((r) => r.metadata.duration_ms as number)
-    const avgDurationMs = durations.length > 0
-      ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
-      : 0
-
-    // Per-user drill-down (group by studentId from metadata)
-    const userMap = new Map<string, RawEvent[]>()
-    for (const row of allEvents) {
-      const sid = (row.metadata?.studentId as string) || (row.metadata?.student_id as string)
-      if (!sid) continue
-      if (!userMap.has(sid)) userMap.set(sid, [])
-      userMap.get(sid)!.push(row)
-    }
-
-    const userDrillDown: UserDrillDown[] = []
-    for (const [studentId, events] of Array.from(userMap.entries())) {
-      const sorted = events.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      const latest = sorted[0]
-      const opens = events.filter((e) => e.type === 'lesson_open')
-      const closes = events.filter((e) => e.type === 'lesson_close' && e.metadata?.completed === true)
-      const nrsSet = new Set<string>()
-      const diffPref: Record<string, number> = {}
-      for (const e of opens) {
-        const code = e.metadata?.nr_code as string
-        if (code) nrsSet.add(code)
-        const d = (e.metadata?.difficulty as string) || 'unknown'
-        diffPref[d] = (diffPref[d] || 0) + 1
-      }
-      const topDiff = Object.entries(diffPref).sort((a, b) => b[1] - a[1])[0]
-      const sessionsSet = new Set(events.map((e) => e.session_id).filter(Boolean))
-
-      userDrillDown.push({
-        studentId,
-        lastAccess: latest.created_at,
-        device: latest.device_type || '-',
-        os: latest.device_os || '-',
-        browser: latest.device_browser || '-',
-        timezone: latest.timezone || '-',
-        location: resolveLocation(latest.timezone),
-        totalSessions: sessionsSet.size || 1,
-        nrsAccessed: Array.from(nrsSet),
-        difficultyPreference: topDiff ? topDiff[0] : '-',
-        completionRate: opens.length > 0 ? Math.round((closes.length / opens.length) * 100) : 0,
-      })
-    }
-    userDrillDown.sort((a, b) => new Date(b.lastAccess).getTime() - new Date(a.lastAccess).getTime())
-
-    // Recent events (last 50 with full fields)
-    const { data: recentEvents } = await db
-      .from('user_events')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50)
-
-    return {
-      ...empty,
-      totalSessions: totalSessions ?? 0,
-      uniqueUsers,
-      devices,
-      topLessons,
-      difficulties,
-      peakHours,
-      recentEvents: (recentEvents as UserEvent[]) || [],
-      osDistribution,
-      browserDistribution,
-      geoDistribution,
-      connectionTypes,
-      screenResolutions,
-      darkModeStats: { dark: darkCount, light: lightCount },
-      completionRate,
-      avgDurationMs,
-      userDrillDown,
-    }
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    return { ...empty, error: message.includes('user_events') || message.includes('relation') ? 'Tabela user_events nao encontrada' : message }
+  if (!authenticated) {
+    return (
+      <div style={{
+        minHeight: '100vh', backgroundColor: C.bg, color: C.text, fontFamily: C.font,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <p style={{ color: C.dim }}>Verificando autenticacao...</p>
+      </div>
+    );
   }
-}
-
-export default async function AdminDashboard() {
-  const cookieStore = await cookies()
-  const session = cookieStore.get('admin_eduven_session')
-
-  if (!session || session.value !== 'valid') {
-    redirect('/admin/login')
-  }
-
-  const data = await queryAnalytics()
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: colors.bg,
-        color: colors.text,
-        fontFamily: 'Inter, system-ui, sans-serif',
-        padding: '1.5rem',
-      }}
-    >
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg, color: C.text, fontFamily: C.font }}>
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem',
-          flexWrap: 'wrap',
-          gap: '1rem',
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>
-          Admin —{' '}
-          <span style={{ color: colors.accent }}>O Interativo Mundo da NR</span>
-        </h1>
-        <a
-          href="/api/eduven/admin/logout"
-          style={{
-            backgroundColor: 'transparent',
-            border: `1px solid ${colors.border}`,
-            borderRadius: '8px',
-            padding: '0.5rem 1.25rem',
-            color: colors.muted,
-            fontSize: '0.875rem',
-            textDecoration: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          Sair
-        </a>
-      </div>
+      <header style={{
+        padding: '1.25rem 1.5rem', borderBottom: `1px solid ${C.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.bg2,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Database size={24} style={{ color: C.cyan }} />
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>Eduven Admin</h1>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: C.dim }}>Database Explorer</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {(['explorer', 'diagram'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+              padding: '0.375rem 0.75rem', borderRadius: '0.375rem', border: 'none',
+              backgroundColor: activeTab === tab ? 'rgba(0,212,255,0.15)' : 'transparent',
+              color: activeTab === tab ? C.cyan : C.muted, cursor: 'pointer',
+              fontFamily: C.font, fontSize: '0.8125rem', fontWeight: 500,
+            }}>
+              {tab === 'explorer' ? <Table size={14} /> : <GitBranch size={14} />}
+              {tab === 'explorer' ? 'Explorer' : 'Diagrama'}
+            </button>
+          ))}
+          <a href="/admin/analytics" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+            padding: '0.375rem 0.75rem', borderRadius: '0.375rem', border: 'none',
+            backgroundColor: 'transparent', color: C.muted, cursor: 'pointer',
+            fontFamily: C.font, fontSize: '0.8125rem', fontWeight: 500, textDecoration: 'none',
+          }}>
+            <BarChart3 size={14} />
+            Analytics
+          </a>
+          <a href="/admin/llm-logs" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+            padding: '0.375rem 0.75rem', borderRadius: '0.375rem', border: 'none',
+            backgroundColor: 'transparent', color: C.muted, cursor: 'pointer',
+            fontFamily: C.font, fontSize: '0.8125rem', fontWeight: 500, textDecoration: 'none',
+          }}>
+            <FileText size={14} />
+            LLM Logs
+          </a>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '0.8125rem' }}>
+          {stats && (
+            <>
+              <span><strong style={{ color: C.cyan }}>{stats.totalTables}</strong> tabelas</span>
+              <span><strong style={{ color: C.cyan }}>{stats.totalRows.toLocaleString()}</strong> registros</span>
+            </>
+          )}
+          <button onClick={handleLogout} title="Sair" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+            padding: '0.375rem 0.75rem', borderRadius: '0.375rem', border: `1px solid ${C.border}`,
+            backgroundColor: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: C.font, fontSize: '0.75rem',
+          }}><LogOut size={14} />Sair</button>
+        </div>
+      </header>
 
-      {/* Error state */}
-      {data.error && (
-        <div
-          style={{
-            ...cardStyle,
-            borderColor: colors.danger,
-            marginBottom: '1.5rem',
-            color: colors.danger,
-          }}
-        >
-          <strong>Erro:</strong> {data.error}
+      {activeTab === 'diagram' ? (
+        <ERDiagram />
+      ) : (
+      <div style={{ display: 'flex', minHeight: 'calc(100vh - 70px)' }}>
+        {/* Sidebar */}
+        <aside style={{
+          width: 280, borderRight: `1px solid ${C.border}`, padding: '1rem',
+          overflowY: 'auto', backgroundColor: 'rgba(5,7,13,0.5)',
+        }}>
+          <p style={{ fontSize: '0.6875rem', color: C.dim, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem', fontWeight: 600 }}>Tabelas</p>
+          {stats?.tables.map(t => {
+            const color = TABLE_COLORS[t.name] || C.cyan;
+            const active = selected === t.name;
+            return (
+              <button key={t.name} onClick={() => handleSelectTable(t.name)} style={{
+                width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: C.font,
+                padding: '0.75rem', marginBottom: '0.5rem', borderRadius: '0.5rem',
+                border: `1px solid ${active ? color : C.border}`,
+                backgroundColor: active ? `${color}15` : C.bgCard, transition: 'all 0.15s',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Table size={14} style={{ color }} />
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: active ? '#fff' : C.text }}>{t.name}</span>
+                  </div>
+                  <span style={{ fontSize: '0.6875rem', color: C.dim, fontFamily: C.mono }}>{t.rows}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                  <span style={{ fontSize: '0.6875rem', color: C.dim }}>{t.columns.length} colunas</span>
+                  <button
+                    onClick={(e) => fetchSaibaMais(t.name, e)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 3,
+                      padding: '2px 8px', borderRadius: 10, border: `1px solid ${color}40`,
+                      background: `${color}10`, color, fontSize: '0.625rem', fontWeight: 600,
+                      cursor: 'pointer', fontFamily: C.font, transition: 'all 0.15s',
+                    }}
+                  >
+                    <Info size={10} />
+                    {saibaMaisLoading === t.name ? '...' : 'Saiba mais'}
+                  </button>
+                </div>
+              </button>
+            );
+          })}
+        </aside>
+
+        {/* Main */}
+        <main style={{ flex: 1, padding: '1.25rem', overflowX: 'auto' }}>
+          {!selected ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: C.dim }}>
+              <Layers size={64} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+              <p style={{ fontSize: '1.125rem' }}>Selecione uma tabela para explorar</p>
+            </div>
+          ) : (
+            <>
+              {/* Table Header + Search */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#fff' }}>{selected}</h2>
+                  {data && <p style={{ margin: 0, fontSize: '0.75rem', color: C.dim }}>{data.total.toLocaleString()} registros</p>}
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: C.dim, pointerEvents: 'none' }} />
+                  <input type="text" placeholder="Buscar (min 2 letras)..." value={search} onChange={e => handleSearch(e.target.value)}
+                    style={{
+                      backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: '0.375rem',
+                      padding: '0.5rem 0.75rem 0.5rem 2rem', color: C.text, fontSize: '0.8125rem',
+                      fontFamily: C.font, outline: 'none', width: 260,
+                    }} />
+                </div>
+              </div>
+
+              {/* Data Table */}
+              <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: '0.5rem', backgroundColor: C.bgCard }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', fontFamily: C.mono }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                      {(data?.columns || []).map((col, i) => (
+                        <th key={col} onClick={() => handleSort(col)} style={{
+                          padding: '0.625rem 0.75rem', textAlign: 'left', cursor: 'pointer',
+                          color: sort === col ? C.cyan : C.muted, fontWeight: 600, fontSize: '0.75rem',
+                          whiteSpace: 'nowrap', userSelect: 'none',
+                          borderRight: i < ((data?.columns || []).length || 0) - 1 ? `1px solid ${C.border}` : 'none',
+                        }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                            {col} <span style={{ fontSize: '0.625rem', color: C.dim }}>{(data?.types || [])[i]}</span>
+                            {sort === col && (order === 'ASC' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
+                          </span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr><td colSpan={(data?.columns || []).length || 1} style={{ padding: '2rem', textAlign: 'center', color: C.dim }}>Carregando...</td></tr>
+                    ) : data?.rows.length === 0 ? (
+                      <tr><td colSpan={(data?.columns || []).length || 1} style={{ padding: '2rem', textAlign: 'center', color: C.dim }}>Nenhum resultado</td></tr>
+                    ) : data?.rows.map((row, ri) => (
+                      <tr key={ri} style={{ borderBottom: `1px solid ${C.border}` }}
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(0,212,255,0.03)')}
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                        {(data?.columns || []).map((col, ci) => {
+                          const val = row[col];
+                          const text = truncate(val);
+                          const isLong = val !== null && String(val).length > 80;
+                          const isTextCol = TEXT_COLS.has(col.toLowerCase());
+                          const clickable = isLong || (isTextCol && val !== null && String(val).length > 0);
+                          return (
+                            <td key={ci} onClick={() => clickable ? setCellModal({ col, value: String(val) }) : null}
+                              title={String(val ?? '')} style={{
+                                padding: '0.5rem 0.75rem', maxWidth: 300, overflow: 'hidden',
+                                textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                color: val === null ? C.dim : clickable ? C.cyan : C.text,
+                                fontStyle: val === null ? 'italic' : 'normal',
+                                cursor: clickable ? 'pointer' : 'default',
+                                textDecoration: clickable ? 'underline' : 'none',
+                                textDecorationColor: clickable ? 'rgba(0,212,255,0.3)' : 'transparent',
+                                borderRight: ci < (data?.columns || []).length - 1 ? `1px solid ${C.border}` : 'none',
+                              }}>{text}</td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {data && data.total > LIMIT && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 0', fontSize: '0.8125rem', color: C.muted }}>
+                  <button onClick={() => handlePage(-1)} disabled={page === 0} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+                    padding: '0.375rem 0.75rem', borderRadius: '0.375rem', border: `1px solid ${C.border}`,
+                    backgroundColor: page === 0 ? 'transparent' : C.bgCard,
+                    color: page === 0 ? C.dim : C.text, cursor: page === 0 ? 'not-allowed' : 'pointer',
+                    fontFamily: C.font, fontSize: '0.8125rem',
+                  }}><ChevronLeft size={14} />Anterior</button>
+                  <span>{page * LIMIT + 1}\u2013{Math.min((page + 1) * LIMIT, data.total)} de {data.total.toLocaleString()}</span>
+                  <button onClick={() => handlePage(1)} disabled={(page + 1) * LIMIT >= data.total} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+                    padding: '0.375rem 0.75rem', borderRadius: '0.375rem', border: `1px solid ${C.border}`,
+                    backgroundColor: (page + 1) * LIMIT >= data.total ? 'transparent' : C.bgCard,
+                    color: (page + 1) * LIMIT >= data.total ? C.dim : C.text,
+                    cursor: (page + 1) * LIMIT >= data.total ? 'not-allowed' : 'pointer',
+                    fontFamily: C.font, fontSize: '0.8125rem',
+                  }}>Proximo<ChevronRight size={14} /></button>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+      )}
+
+      {/* Cell Modal */}
+      {cellModal && (
+        <div onClick={() => setCellModal(null)} style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, padding: '2rem', backdropFilter: 'blur(4px)',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            backgroundColor: C.bg2, border: `1px solid ${C.border}`, borderRadius: '0.75rem',
+            maxWidth: 700, width: '100%', maxHeight: '80vh', overflow: 'hidden',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: `1px solid ${C.border}` }}>
+              <span style={{ fontWeight: 600, color: C.cyan }}>{cellModal.col}</span>
+              <button onClick={() => setCellModal(null)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            <pre style={{
+              padding: '1.25rem', overflowY: 'auto', maxHeight: 'calc(80vh - 60px)',
+              fontFamily: C.mono, fontSize: '0.8125rem', lineHeight: 1.6,
+              color: C.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
+            }}>{cellModal.value}</pre>
+          </div>
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1rem',
-          marginBottom: '2rem',
-        }}
-      >
-        <div style={cardStyle}>
-          <p style={statNumber}>{data.totalSessions}</p>
-          <p style={statLabel}>Total de sessoes</p>
-        </div>
-        <div style={cardStyle}>
-          <p style={statNumber}>{data.uniqueUsers}</p>
-          <p style={statLabel}>Usuarios unicos</p>
-        </div>
-        <div style={cardStyle}>
-          <p style={statNumber}>{data.devices.length}</p>
-          <p style={statLabel}>Tipos de dispositivo</p>
-        </div>
-        <div style={cardStyle}>
-          <p style={statNumber}>
-            {data.peakHours.length > 0 ? `${data.peakHours[0].hour}h` : '-'}
-          </p>
-          <p style={statLabel}>Horario de pico</p>
-        </div>
-        <div style={cardStyle}>
-          <p style={statNumber}>{data.completionRate}%</p>
-          <p style={statLabel}>Taxa de conclusao</p>
-        </div>
-        <div style={cardStyle}>
-          <p style={statNumber}>
-            {data.avgDurationMs > 0
-              ? data.avgDurationMs >= 60000
-                ? `${Math.round(data.avgDurationMs / 60000)}min`
-                : `${Math.round(data.avgDurationMs / 1000)}s`
-              : '-'}
-          </p>
-          <p style={statLabel}>Tempo medio por aula</p>
-        </div>
-      </div>
+      {/* Saiba Mais Modal */}
+      {saibaMais && (
+        <div onClick={() => setSaibaMais(null)} style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+          paddingTop: '8vh', overflowY: 'auto',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            backgroundColor: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16,
+            width: '90%', maxWidth: 640, padding: '2rem', position: 'relative',
+          }}>
+            <button onClick={() => setSaibaMais(null)} style={{
+              position: 'absolute', top: 16, right: 16, background: 'none', border: 'none',
+              color: C.dim, cursor: 'pointer',
+            }}><X size={20} /></button>
 
-      {/* Grid: Devices + Difficulty + Top Lessons */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '1rem',
-          marginBottom: '2rem',
-        }}
-      >
-        {/* Devices */}
-        <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-            Dispositivos
-          </h2>
-          {data.devices.length === 0 ? (
-            <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-          ) : (
-            data.devices.map((d) => (
-              <div
-                key={d.device_type}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '0.4rem 0',
-                  borderBottom: `1px solid ${colors.border}`,
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: `${TABLE_COLORS[saibaMais.table] || C.cyan}20`, border: `1px solid ${TABLE_COLORS[saibaMais.table] || C.cyan}40`,
+              }}>
+                <Info size={18} style={{ color: TABLE_COLORS[saibaMais.table] || C.cyan }} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#fff' }}>{saibaMais.table}</h3>
+                <span style={{ fontSize: '0.6875rem', color: C.dim }}>Descricao gerada por IA</span>
+              </div>
+            </div>
+
+            <div className="saiba-mais-md" style={{ fontSize: '0.875rem', color: C.text, lineHeight: 1.7 }}>
+              <ReactMarkdown
+                components={{
+                  h2: ({ children }) => <h2 style={{ fontSize: '0.875rem', fontWeight: 700, color: C.cyan, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 20, marginBottom: 8, borderBottom: `1px solid ${C.border}`, paddingBottom: 4 }}>{children}</h2>,
+                  h3: ({ children }) => <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: C.text, marginTop: 12, marginBottom: 6 }}>{children}</h3>,
+                  p: ({ children }) => <p style={{ margin: '0 0 10px', color: C.muted, fontSize: '0.8125rem', lineHeight: 1.7 }}>{children}</p>,
+                  ul: ({ children }) => <ul style={{ margin: '4px 0 12px', paddingLeft: 18 }}>{children}</ul>,
+                  li: ({ children }) => <li style={{ fontSize: '0.8125rem', color: C.muted, lineHeight: 1.8, marginBottom: 2 }}>{children}</li>,
+                  strong: ({ children }) => <strong style={{ color: C.text, fontWeight: 600 }}>{children}</strong>,
+                  code: ({ children }) => <code style={{ background: 'rgba(0,212,255,0.08)', color: C.cyan, padding: '1px 5px', borderRadius: 4, fontSize: '0.75rem', fontFamily: C.mono }}>{children}</code>,
                 }}
               >
-                <span>{d.device_type}</span>
-                <span style={{ color: colors.accent, fontWeight: 600 }}>{d.count}</span>
-              </div>
-            ))
-          )}
-        </div>
+                {saibaMais.description}
+              </ReactMarkdown>
+            </div>
 
-        {/* Difficulty */}
-        <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-            Dificuldade mais usada
-          </h2>
-          {data.difficulties.length === 0 ? (
-            <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-          ) : (
-            data.difficulties.map((d) => (
-              <div
-                key={d.difficulty}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '0.4rem 0',
-                  borderBottom: `1px solid ${colors.border}`,
-                }}
-              >
-                <span>{d.difficulty}</span>
-                <span style={{ color: colors.accent, fontWeight: 600 }}>{d.count}</span>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Top Lessons */}
-        <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-            Aulas mais acessadas (Top 10)
-          </h2>
-          {data.topLessons.length === 0 ? (
-            <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-          ) : (
-            data.topLessons.map((l, i) => (
-              <div
-                key={l.nr_code}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '0.4rem 0',
-                  borderBottom: `1px solid ${colors.border}`,
-                }}
-              >
-                <span>
-                  <span style={{ color: colors.muted, marginRight: '0.5rem' }}>
-                    {i + 1}.
-                  </span>
-                  {l.nr_code}
-                </span>
-                <span style={{ color: colors.accent, fontWeight: 600 }}>{l.count}</span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Peak Hours */}
-      <div style={{ ...cardStyle, marginBottom: '2rem' }}>
-        <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-          Distribuicao por horario
-        </h2>
-        {data.peakHours.length === 0 ? (
-          <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-        ) : (
-          <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', height: '120px' }}>
-            {Array.from({ length: 24 }, (_, h) => {
-              const found = data.peakHours.find((p) => p.hour === h)
-              const count = found?.count || 0
-              const max = data.peakHours[0]?.count || 1
-              const heightPct = max > 0 ? (count / max) * 100 : 0
-              return (
-                <div
-                  key={h}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    height: '100%',
-                    justifyContent: 'flex-end',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '100%',
-                      height: `${Math.max(heightPct, 2)}%`,
-                      backgroundColor: count > 0 ? colors.accent : colors.border,
-                      borderRadius: '2px 2px 0 0',
-                      opacity: count > 0 ? 0.8 : 0.3,
-                    }}
-                    title={`${h}h: ${count} eventos`}
-                  />
-                  <span
-                    style={{
-                      fontSize: '0.6rem',
-                      color: colors.muted,
-                      marginTop: '2px',
-                    }}
-                  >
-                    {h}
-                  </span>
-                </div>
-              )
-            })}
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12, marginTop: 16, fontSize: '0.625rem', color: C.dim, textAlign: 'right' }}>
+              Gerado em {new Date(saibaMais.generated_at).toLocaleString('pt-BR')}
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Grid: OS + Browser + Connection + Dark Mode */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1rem',
-          marginBottom: '2rem',
-        }}
-      >
-        {/* OS Distribution */}
-        <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-            Sistema Operacional
-          </h2>
-          {data.osDistribution.length === 0 ? (
-            <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-          ) : (
-            data.osDistribution.map((d) => {
-              const max = data.osDistribution[0]?.count || 1
-              const pct = Math.round((d.count / max) * 100)
-              return (
-                <div key={d.label} style={{ marginBottom: '0.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.85rem' }}>{d.label}</span>
-                    <span style={{ color: colors.accent, fontWeight: 600, fontSize: '0.85rem' }}>{d.count}</span>
-                  </div>
-                  <div style={{ height: '6px', backgroundColor: colors.border, borderRadius: '3px' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, backgroundColor: colors.accent, borderRadius: '3px', opacity: 0.8 }} />
-                  </div>
-                </div>
-              )
-            })
-          )}
         </div>
-
-        {/* Browser Distribution */}
-        <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-            Navegador
-          </h2>
-          {data.browserDistribution.length === 0 ? (
-            <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-          ) : (
-            data.browserDistribution.map((d) => {
-              const max = data.browserDistribution[0]?.count || 1
-              const pct = Math.round((d.count / max) * 100)
-              return (
-                <div key={d.label} style={{ marginBottom: '0.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.85rem' }}>{d.label}</span>
-                    <span style={{ color: colors.accent, fontWeight: 600, fontSize: '0.85rem' }}>{d.count}</span>
-                  </div>
-                  <div style={{ height: '6px', backgroundColor: colors.border, borderRadius: '3px' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, backgroundColor: colors.accent, borderRadius: '3px', opacity: 0.8 }} />
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-
-        {/* Connection Types */}
-        <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-            Tipo de Conexao
-          </h2>
-          {data.connectionTypes.length === 0 ? (
-            <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-          ) : (
-            data.connectionTypes.map((d) => (
-              <div
-                key={d.label}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '0.4rem 0',
-                  borderBottom: `1px solid ${colors.border}`,
-                }}
-              >
-                <span>{d.label}</span>
-                <span style={{ color: colors.accent, fontWeight: 600 }}>{d.count}</span>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Dark Mode Stats */}
-        <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-            Dark Mode
-          </h2>
-          {data.darkModeStats.dark + data.darkModeStats.light === 0 ? (
-            <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-          ) : (
-            <>
-              {[
-                { label: 'Dark', count: data.darkModeStats.dark },
-                { label: 'Light', count: data.darkModeStats.light },
-              ].map((d) => {
-                const total = data.darkModeStats.dark + data.darkModeStats.light
-                const pct = total > 0 ? Math.round((d.count / total) * 100) : 0
-                return (
-                  <div key={d.label} style={{ marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                      <span style={{ fontSize: '0.85rem' }}>{d.label}</span>
-                      <span style={{ color: colors.accent, fontWeight: 600, fontSize: '0.85rem' }}>{d.count} ({pct}%)</span>
-                    </div>
-                    <div style={{ height: '8px', backgroundColor: colors.border, borderRadius: '4px' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, backgroundColor: d.label === 'Dark' ? '#6366f1' : '#f59e0b', borderRadius: '4px', opacity: 0.85 }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Grid: Geographic + Screen Resolution */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-          gap: '1rem',
-          marginBottom: '2rem',
-        }}
-      >
-        {/* Geographic Distribution */}
-        <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-            Distribuicao Geografica (por fuso)
-          </h2>
-          {data.geoDistribution.length === 0 ? (
-            <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-          ) : (
-            data.geoDistribution.map((d, i) => (
-              <div
-                key={d.label}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '0.4rem 0',
-                  borderBottom: `1px solid ${colors.border}`,
-                }}
-              >
-                <span>
-                  <span style={{ color: colors.muted, marginRight: '0.5rem' }}>{i + 1}.</span>
-                  {d.label}
-                </span>
-                <span style={{ color: colors.accent, fontWeight: 600 }}>{d.count}</span>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Screen Resolution */}
-        <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-            Resolucao de Tela (Top 10)
-          </h2>
-          {data.screenResolutions.length === 0 ? (
-            <p style={{ color: colors.muted, margin: 0 }}>Sem dados</p>
-          ) : (
-            data.screenResolutions.map((d, i) => (
-              <div
-                key={d.label}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '0.4rem 0',
-                  borderBottom: `1px solid ${colors.border}`,
-                }}
-              >
-                <span>
-                  <span style={{ color: colors.muted, marginRight: '0.5rem' }}>{i + 1}.</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{d.label}</span>
-                </span>
-                <span style={{ color: colors.accent, fontWeight: 600 }}>{d.count}</span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Per-User Drill-Down Table */}
-      <div style={{ ...cardStyle, overflowX: 'auto', marginBottom: '2rem' }}>
-        <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-          Detalhamento por Usuario
-        </h2>
-        {data.userDrillDown.length === 0 ? (
-          <p style={{ color: colors.muted, margin: 0 }}>Sem dados de usuarios identificados</p>
-        ) : (
-          <table
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '0.8rem',
-            }}
-          >
-            <thead>
-              <tr>
-                {['Aluno', 'Ultimo acesso', 'Dispositivo', 'OS', 'Navegador', 'Localizacao', 'Sessoes', 'NRs', 'Dificuldade', 'Conclusao'].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      textAlign: 'left',
-                      padding: '0.6rem 0.5rem',
-                      borderBottom: `1px solid ${colors.border}`,
-                      color: colors.muted,
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.userDrillDown.map((u) => (
-                <tr key={u.studentId}>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}`, fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                    {u.studentId.length > 12 ? `${u.studentId.slice(0, 12)}...` : u.studentId}
-                  </td>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}`, whiteSpace: 'nowrap', color: colors.muted }}>
-                    {new Date(u.lastAccess).toLocaleString('pt-BR')}
-                  </td>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}` }}>{u.device}</td>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}` }}>{u.os}</td>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}` }}>{u.browser}</td>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}` }}>{u.location}</td>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}`, textAlign: 'center', color: colors.accent, fontWeight: 600 }}>{u.totalSessions}</td>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}`, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    title={u.nrsAccessed.join(', ')}
-                  >
-                    {u.nrsAccessed.length > 0 ? u.nrsAccessed.join(', ') : '-'}
-                  </td>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}` }}>
-                    <span style={{ backgroundColor: 'rgba(34,211,238,0.15)', color: colors.accent, padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>
-                      {u.difficultyPreference}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.5rem', borderBottom: `1px solid ${colors.border}`, textAlign: 'center', fontWeight: 600, color: u.completionRate >= 50 ? '#22c55e' : colors.danger }}>
-                    {u.completionRate}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Recent Events Table */}
-      <div style={{ ...cardStyle, overflowX: 'auto' }}>
-        <h2 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: colors.accent }}>
-          Ultimos 50 eventos
-        </h2>
-        {data.recentEvents.length === 0 ? (
-          <p style={{ color: colors.muted, margin: 0 }}>Sem eventos registrados</p>
-        ) : (
-          <table
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '0.85rem',
-            }}
-          >
-            <thead>
-              <tr>
-                {['Timestamp', 'Tipo', 'IP', 'Dispositivo', 'Metadata'].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      textAlign: 'left',
-                      padding: '0.6rem 0.75rem',
-                      borderBottom: `1px solid ${colors.border}`,
-                      color: colors.muted,
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.recentEvents.map((ev) => (
-                <tr key={ev.id}>
-                  <td
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      borderBottom: `1px solid ${colors.border}`,
-                      whiteSpace: 'nowrap',
-                      color: colors.muted,
-                    }}
-                  >
-                    {new Date(ev.created_at).toLocaleString('pt-BR')}
-                  </td>
-                  <td
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      borderBottom: `1px solid ${colors.border}`,
-                    }}
-                  >
-                    <span
-                      style={{
-                        backgroundColor: 'rgba(34,211,238,0.15)',
-                        color: colors.accent,
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.8rem',
-                      }}
-                    >
-                      {ev.type}
-                    </span>
-                  </td>
-                  <td
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      borderBottom: `1px solid ${colors.border}`,
-                      fontFamily: 'monospace',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    {ev.user_ip}
-                  </td>
-                  <td
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      borderBottom: `1px solid ${colors.border}`,
-                    }}
-                  >
-                    {ev.device_type}
-                  </td>
-                  <td
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      borderBottom: `1px solid ${colors.border}`,
-                      maxWidth: '300px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem',
-                      color: colors.muted,
-                    }}
-                  >
-                    {JSON.stringify(ev.metadata)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      )}
     </div>
-  )
+  );
 }
