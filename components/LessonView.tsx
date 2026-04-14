@@ -183,9 +183,9 @@ export default function LessonView({
               />
 
               {/* ExerciseWindow nas secoes 4 e 6 (canon) */}
-              {active.exerciseData && exerciseIds[active.index] && (
+              {active.exerciseData && (
                 <ExerciseWindow
-                  exerciseId={exerciseIds[active.index]}
+                  exerciseId={exerciseIds[active.index] || active.index}
                   prompt={active.exerciseData.prompt}
                   hints={active.exerciseData.hints}
                   expectedInputExample={

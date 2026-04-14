@@ -34,7 +34,16 @@ export async function POST(req: NextRequest) {
       const sec = LESSON_SECTIONS[i]
       try {
         const content = await generateSection(nr.code, nr.title, sectorName, sectorDesc, sec.titlePt, sec.index, difficulty)
-        sections.push({ index: sec.index, titlePt: sec.titlePt, content })
+        const section: any = { index: sec.index, titlePt: sec.titlePt, content }
+
+        // Seções 4 e 6: gerar exercício interativo
+        if (sec.index === 4 || sec.index === 6) {
+          try {
+            section.exerciseData = await generateExercise(nr.code, nr.title, sectorName, sec.titlePt, sec.index, content)
+          } catch { /* exercise generation failed — section still works without it */ }
+        }
+
+        sections.push(section)
       } catch {
         sections.push({
           index: sec.index,
@@ -123,4 +132,66 @@ async function generateSection(nrCode: string, nrTitle: string, sectorName: stri
   }
 
   throw new Error('No LLM API key configured')
+}
+
+async function generateExercise(
+  nrCode: string, nrTitle: string, sectorName: string,
+  sectionTitle: string, sectionIndex: number, sectionContent: string
+) {
+  const isChallenge = sectionIndex === 6
+  const prompt = `Você é a Ella, instrutora de SST. Crie um exercício interativo sobre ${nrCode} — "${nrTitle}" para o setor ${sectorName}.
+
+CONTEXTO DA SEÇÃO "${sectionTitle}":
+${sectionContent.slice(0, 500)}
+
+${isChallenge
+  ? 'Crie um DESAFIO PRÁTICO: uma situação-problema real onde o aluno precisa analisar e propor solução. Inclua dados concretos (números, prazos, situações).'
+  : 'Crie um EXERCÍCIO de análise: apresente um cenário do setor e peça ao aluno para identificar riscos, EPIs necessários ou procedimentos corretos.'}
+
+Retorne APENAS JSON válido (sem markdown):
+{
+  "prompt": "texto do exercício com a situação-problema (3-5 parágrafos)",
+  "exerciseType": "open",
+  "expectedSolution": {"expectedInput": "resposta esperada resumida em 1-2 frases"},
+  "hints": ["dica 1", "dica 2", "dica 3"],
+  "difficultyScore": 0.6
+}`
+
+  const claudeKey = process.env.ANTHROPIC_API_KEY
+  if (claudeKey) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': claudeKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      const text = data.content?.[0]?.text || ''
+      try {
+        const clean = text.replace(/```json?\s*/g, '').replace(/```/g, '').trim()
+        return JSON.parse(clean)
+      } catch { /* parse failed */ }
+    }
+  }
+
+  // Fallback: static exercise
+  return {
+    prompt: `Com base no conteúdo sobre ${nrCode} para o setor ${sectorName}, descreva:\n\n1. Quais são os principais riscos ocupacionais neste contexto?\n2. Quais medidas de controle a norma exige?\n3. O que acontece se a empresa não cumprir?`,
+    exerciseType: 'open',
+    expectedSolution: { expectedInput: 'O aluno deve identificar riscos, citar medidas da norma e consequências do descumprimento.' },
+    hints: [
+      `Releia a seção sobre ${nrCode} prestando atenção nos itens citados`,
+      'Pense nos riscos específicos do seu setor de atuação',
+      'Considere tanto medidas individuais (EPIs) quanto coletivas (EPCs)',
+    ],
+    difficultyScore: 0.5,
+  }
 }

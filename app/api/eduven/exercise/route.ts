@@ -1,142 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
-import { createMessage, extractText } from '@/lib/llm-client'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 /**
- * POST /api/eduven/exercise
- * Body: { exercise_id, user_input }
- *
- * Avalia a resposta do aluno usando Claude. Salva em eduven.submissions.
- * Retorna { submissionId, isCorrect, score, errorType, executionOutput, canDebug }.
+ * POST /api/eduven/exercise — Ella diagnostica a resposta do aluno via LLM.
+ * Body: { exercise_id, user_input, prompt? }
  */
-
-const EVAL_SYSTEM_PROMPT = `Voce e um auditor fiscal do trabalho avaliando a resposta de um aluno a um exercicio sobre Norma Regulamentadora.
-
-# REGRAS DE AVALIACAO
-
-- NAO exija palavras exatas. Aceite diferentes formas de expressar a mesma ideia.
-- NAO penalize por typos ou falta de acento.
-- Aceite respostas que demonstrem COMPREENSAO dos conceitos-chave.
-- Penalize respostas vazias, evasivas, ou que inventam NRs/itens inexistentes.
-- Se o aluno cita um item da norma no formato [NR-X, item Y.Z], verifique coerencia com a expected_solution.
-
-# TOM DA AVALIACAO
-
-- Direto sem condescendencia
-- Concreto: aponte o que acertou e o que faltou
-- Sem fillers ("e importante destacar")
-- Maximo 100 palavras no executionOutput
-
-# FORMATO JSON ESTRITO
-
-Retorne APENAS este JSON:
-
-{
-  "isCorrect": true | false,
-  "score": 0.0 a 1.0,
-  "errorType": null | "incomplete" | "incorrect" | "off_topic" | "vague",
-  "errorDetail": null | "frase curta explicando o gap",
-  "executionOutput": "Feedback direto pro aluno (se correto: elogio + por que; se errado: o que faltou)"
-}
-
-Score: 0.9-1.0 correto e completo. 0.6-0.8 correto parcial. 0.3-0.5 incorreto mas no caminho. 0.0-0.2 vazio/off-topic.`
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const exerciseId = parseInt(String(body.exercise_id), 10)
-    const userInput = String(body.user_input || '').trim().slice(0, 5000)
+    const userInput = String(body.user_input || '').trim()
+    const exercisePrompt = String(body.prompt || 'Exercício sobre NR')
 
-    if (!exerciseId || !userInput) {
-      return NextResponse.json({ error: 'exercise_id e user_input obrigatorios' }, { status: 400 })
+    if (!userInput) {
+      return NextResponse.json({ error: 'Resposta vazia' }, { status: 400 })
     }
 
-    const db = getDb()
+    const llmPrompt = `Você é a Ella, instrutora de Segurança e Saúde do Trabalho. Avalie a resposta do aluno ao exercício abaixo.
 
-    // Load exercise
-    const { data: exercise, error: exErr } = await db
-      .from('exercises')
-      .select('id, lesson_id, section_index, exercise_type, prompt_text, expected_solution_json')
-      .eq('id', exerciseId)
-      .single()
+EXERCÍCIO:
+${exercisePrompt.slice(0, 800)}
 
-    if (exErr || !exercise) {
-      return NextResponse.json({ error: 'Exercício não encontrado' }, { status: 404 })
-    }
+RESPOSTA DO ALUNO:
+${userInput.slice(0, 1500)}
 
-    // Evaluate via Claude
-    const userMsg = `Exercicio:
-"${exercise.prompt_text}"
+Avalie em JSON (sem markdown):
+{
+  "isCorrect": true/false,
+  "score": 0.0 a 1.0,
+  "errorType": null ou "conceitual" ou "incompleto" ou "incorreto",
+  "executionOutput": "feedback detalhado da Ella em 2-3 parágrafos: o que está certo, o que falta, como melhorar"
+}`
 
-Expected solution (referencia):
-${JSON.stringify(exercise.expected_solution_json, null, 2)}
-
-Resposta do aluno:
-"${userInput}"
-
-Avalie e retorne APENAS o JSON especificado.`
-
-    const response = await createMessage(
-      {
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 800,
-        system: EVAL_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userMsg }],
-      },
-      { route: '/api/eduven/exercise' }
-    )
-
-    const raw = extractText(response)
-    let parsed: {
-      isCorrect: boolean
-      score: number
-      errorType: string | null
-      errorDetail: string | null
-      executionOutput: string
-    }
+    const content = await callLLM(llmPrompt)
     try {
-      let s = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
-      const start = s.indexOf('{'), end = s.lastIndexOf('}')
-      parsed = JSON.parse(s.slice(start, end + 1))
-    } catch {
-      parsed = {
-        isCorrect: false,
-        score: 0,
-        errorType: 'parse_error',
-        errorDetail: 'Nao consegui parsear a avaliacao do Claude.',
-        executionOutput: 'Erro ao processar sua resposta. Tenta de novo.',
-      }
-    }
-
-    // Persist submission
-    const { data: submission, error: subErr } = await db
-      .from('submissions')
-      .insert({
-        exercise_id: exerciseId,
-        user_id: null,
-        user_input: userInput,
-        is_correct: parsed.isCorrect,
-        score: parsed.score,
-        error_type: parsed.errorType,
-        error_detail: parsed.errorDetail,
-        attempt_number: 1,
+      const clean = content.replace(/```json?\s*/g, '').replace(/```/g, '').trim()
+      const result = JSON.parse(clean)
+      return NextResponse.json({
+        submissionId: Date.now(),
+        isCorrect: result.isCorrect ?? false,
+        score: result.score ?? 0,
+        errorType: result.errorType ?? null,
+        executionOutput: result.executionOutput ?? 'Resposta avaliada.',
+        canDebug: !result.isCorrect,
       })
-      .select('id')
-      .single()
-
-    return NextResponse.json({
-      submissionId: submission?.id ?? null,
-      isCorrect: parsed.isCorrect,
-      score: parsed.score,
-      errorType: parsed.errorType,
-      executionOutput: parsed.executionOutput,
-      canDebug: !parsed.isCorrect,
-    })
+    } catch {
+      return NextResponse.json({
+        submissionId: Date.now(),
+        isCorrect: false, score: 0.5, errorType: null,
+        executionOutput: content || 'A Ella avaliou sua resposta. Tente novamente com mais detalhes.',
+        canDebug: true,
+      })
+    }
   } catch (err) {
-    console.error('[api/eduven/exercise]', (err as Error).message)
-    return NextResponse.json({ error: 'Erro ao avaliar' }, { status: 500 })
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }
+}
+
+async function callLLM(prompt: string): Promise<string> {
+  const claudeKey = process.env.ANTHROPIC_API_KEY
+  if (claudeKey) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': claudeKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 800, messages: [{ role: 'user', content: prompt }] }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      return data.content?.[0]?.text || ''
+    }
+  }
+  const openaiKey = process.env.OPENAI_API_KEY
+  if (openaiKey) {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+      body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 800, messages: [{ role: 'user', content: prompt }] }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      return data.choices?.[0]?.message?.content || ''
+    }
+  }
+  throw new Error('No LLM configured')
 }

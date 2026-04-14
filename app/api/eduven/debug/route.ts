@@ -1,90 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
-import { createMessage, extractText } from '@/lib/llm-client'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 /**
- * POST /api/eduven/debug
- * Body: { submission_id }
- *
- * Pega a submissao + exercicio + contexto, e gera uma explicacao
- * passo-a-passo do que deu errado. Retorna { debugText } pra typewriter.
+ * POST /api/eduven/debug — A Ella explica melhor o erro do aluno via LLM.
+ * Body: { exercise_id, submission_id, user_input?, prompt? }
  */
-
-const DEBUG_SYSTEM_PROMPT = `Voce e um auditor fiscal do trabalho explicando pro aluno o que deu errado na resposta dele.
-
-# REGRAS
-
-- Passo a passo, com numeros. Ex: "1. Voce falou X. 2. O problema e Y. 3. A resposta certa e Z porque...".
-- Tom direto, segunda pessoa, sem condescendencia.
-- Concreto: use as palavras que o aluno usou, nao seja generico.
-- Cite o item da norma quando relevante no formato [NR-X, item Y.Z].
-- Maximo 200 palavras.
-- Markdown simples (sem headings, so numeracao e bold se precisar).
-
-Nao retorne JSON. Retorne texto puro, como se voce estivesse explicando pro aluno na tela.`
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const submissionId = parseInt(String(body.submission_id), 10)
-    if (!submissionId) {
-      return NextResponse.json({ error: 'submission_id obrigatorio' }, { status: 400 })
+    const userInput = String(body.user_input || '').trim()
+    const exercisePrompt = String(body.prompt || 'Exercício sobre NR')
+    const previousFeedback = String(body.previous_feedback || '')
+
+    const llmPrompt = `Você é a Ella, instrutora paciente e didática de Segurança e Saúde do Trabalho.
+
+O aluno errou ou não completou um exercício e pediu ajuda. Explique melhor:
+
+EXERCÍCIO:
+${exercisePrompt.slice(0, 600)}
+
+RESPOSTA DO ALUNO:
+${userInput.slice(0, 800)}
+
+${previousFeedback ? `FEEDBACK ANTERIOR:\n${previousFeedback.slice(0, 400)}` : ''}
+
+Explique de forma clara e encorajadora:
+1. O que o aluno acertou (se algo)
+2. Onde está o erro ou a lacuna
+3. Uma dica concreta para chegar na resposta correta
+4. Um exemplo prático do dia-a-dia do trabalhador
+
+Tom: acolhedor, direto, sem ser condescendente. Use "você" (segunda pessoa).
+Máximo 4 parágrafos. Português BR.`
+
+    const claudeKey = process.env.ANTHROPIC_API_KEY
+    if (claudeKey) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': claudeKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 800, messages: [{ role: 'user', content: llmPrompt }] }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        return NextResponse.json({ debugOutput: data.content?.[0]?.text || 'A Ella está pensando...' })
+      }
     }
 
-    const db = getDb()
-
-    // Load submission + exercise
-    const { data: submission, error: subErr } = await db
-      .from('submissions')
-      .select('id, user_input, is_correct, score, error_type, error_detail, exercise_id')
-      .eq('id', submissionId)
-      .single()
-
-    if (subErr || !submission) {
-      return NextResponse.json({ error: 'Submissão não encontrada' }, { status: 404 })
+    const openaiKey = process.env.OPENAI_API_KEY
+    if (openaiKey) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+        body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 800, messages: [{ role: 'user', content: llmPrompt }] }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        return NextResponse.json({ debugOutput: data.choices?.[0]?.message?.content || '' })
+      }
     }
 
-    const { data: exercise } = await db
-      .from('exercises')
-      .select('prompt_text, expected_solution_json')
-      .eq('id', submission.exercise_id)
-      .single()
-
-    if (!exercise) {
-      return NextResponse.json({ error: 'Exercício não encontrado' }, { status: 404 })
-    }
-
-    const userMsg = `Exercicio:
-"${exercise.prompt_text}"
-
-Expected solution:
-${JSON.stringify(exercise.expected_solution_json, null, 2)}
-
-Resposta do aluno:
-"${submission.user_input}"
-
-Erro detectado: ${submission.error_type || 'geral'}
-${submission.error_detail ? `Detalhe: ${submission.error_detail}` : ''}
-
-Explique passo a passo o que deu errado e como chegar na resposta certa. Texto puro, direto.`
-
-    const response = await createMessage(
-      {
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
-        system: DEBUG_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userMsg }],
-      },
-      { route: '/api/eduven/debug' }
-    )
-
-    const debugText = extractText(response).trim()
-    return NextResponse.json({ debugText })
+    return NextResponse.json({ error: 'No LLM configured' }, { status: 500 })
   } catch (err) {
-    console.error('[api/eduven/debug]', (err as Error).message)
-    return NextResponse.json({ error: 'Erro ao gerar debug' }, { status: 500 })
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }
 }
