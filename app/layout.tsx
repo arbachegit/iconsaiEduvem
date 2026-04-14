@@ -8,9 +8,9 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'O Interativo Mundo da NR | IconsAI',
+  title: 'O Interativo Mundo da NR | Eduvem',
   description: 'Curso interativo sobre as Normas Regulamentadoras brasileiras, adaptado por setor de atuacao.',
-  keywords: ['NR', 'norma regulamentadora', 'seguranca do trabalho', 'sst', 'curso', 'iconsai'],
+  keywords: ['NR', 'norma regulamentadora', 'seguranca do trabalho', 'sst', 'curso', 'eduvem'],
   robots: 'index, follow',
   openGraph: {
     title: 'O Interativo Mundo da NR | IconsAI',
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body style={{
+      <body suppressHydrationWarning style={{
         backgroundColor: '#050d1a',
         color: '#e2e8f0',
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",

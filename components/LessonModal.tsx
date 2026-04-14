@@ -22,15 +22,15 @@ type Difficulty = 'easier' | 'same' | 'harder' | 'phd'
 // Verbos canonicos iconsaiStats, com "dados brasileiros" trocado por "exemplos do setor"
 // (adaptacao legitima — eduven e sector-aware).
 const THINKING_VERBS_STAGE1 = [
-  'Pensando', 'Refletindo', 'Iluminando ideias', 'Aquecendo o quadro',
-  'Garimpando exemplos do setor', 'Conectando conceitos', 'Cavilando',
-  'Considerando', 'Tecendo a abertura',
+  'Preparando seu curso', 'Analisando o setor', 'Conectando conceitos',
+  'Garimpando exemplos reais', 'Adaptando ao seu contexto',
+  'Selecionando os melhores casos', 'Organizando o conteúdo',
 ]
 
 const THINKING_VERBS_STAGE2 = [
-  'Costurando os exemplos', 'Cozinhando a aula', 'Provando os números',
-  'Ajustando o passo a passo', 'Tirando o pó do gráfico', 'Modelando',
-  'Garimpando casos reais', 'Refinando passo a passo', 'Calibrando',
+  'Montando os exercícios', 'Refinando os exemplos', 'Criando desafios práticos',
+  'Ajustando o passo a passo', 'Preparando as atividades',
+  'Calibrando a dificuldade', 'Finalizando sua aula',
 ]
 
 // Tempos minimos de "processamento" pra manter a sensacao de sistema vivo
@@ -295,7 +295,7 @@ export default function LessonModal({
               margin: 0, color: '#e2e8f0', fontSize: 17, fontWeight: 700,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-              {title || (isLoading ? 'Gerando aula sobre ' + nrTitle : nrTitle)}
+              {title || (isLoading ? 'A Ella IA está preparando sua aula...' : nrTitle)}
             </h2>
           </div>
 
@@ -400,7 +400,7 @@ export default function LessonModal({
                 boxShadow: `0 0 40px ${accent}33`,
               }} />
               <div style={{ fontSize: 11, color: accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 8 }}>
-                Gerando aula adaptativa
+                Espera só um pouquinho que a Ella IA está gerando um curso em IA só para você
               </div>
               <p style={{ fontSize: 13, color: '#64748b', maxWidth: 460, margin: '0 auto', lineHeight: 1.6 }}>
                 Lendo a NR e estruturando a primeira secao com exemplos do seu setor.

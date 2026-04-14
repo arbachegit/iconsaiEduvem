@@ -298,14 +298,14 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
   return (
     <div>
       {/* Grid: SVG + botoes/stats */}
-      <div style={{
+      <div className="worker-lab-container" style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)',
         gap: 20,
         marginBottom: 20,
       }}>
         {/* SVG do trabalhador */}
-        <div style={{
+        <div className="worker-lab-main" style={{
           background: '#080c14',
           border: '1px solid #1e293b',
           borderRadius: 10,
@@ -359,7 +359,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
               )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="worker-lab-controls" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {items.map(item => {
                 const isActive = selected.has(item.id)
                 const itemColor = isActive ? ACCENT : '#475569'

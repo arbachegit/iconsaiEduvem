@@ -1,6 +1,8 @@
 'use client'
 
 import { useRef, useState, useCallback, useMemo } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { LessonNavigation } from './education/LessonNavigation'
 import { SvgComprehensionCheck } from './education/SvgComprehensionCheck'
 import { TermModal, useTermModalStack } from './education/TermModal'
@@ -53,6 +55,16 @@ export default function LessonView({
       : null,
     [restLoading, registeredSim]
   )
+  const isMobile = useIsMobile()
+  const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([1]))
+  const toggleSection = (index: number) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
   const [currentSection, setCurrentSectionRaw] = useState(1)
   const navigateToSection = useCallback((newIndex: number) => {
     setCurrentSectionRaw(newIndex)
@@ -121,7 +133,66 @@ export default function LessonView({
         simulationNotAvailable={!registeredSim && !restLoading}
       />
 
-      {/* ═══ Sidebar + conteudo ═══ */}
+      {/* ═══ MOBILE: seções empilhadas com chevron ═══ */}
+      {isMobile ? (
+        <div style={{ padding: '0 12px 24px' }}>
+          {sections.map(sec => {
+            const isExpanded = expandedSections.has(sec.index)
+            return (
+              <div key={sec.index} style={{
+                marginBottom: 8, borderRadius: 10,
+                border: '1px solid #1e293b', overflow: 'hidden',
+                background: '#0c1320',
+              }}>
+                <button
+                  onClick={() => toggleSection(sec.index)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '12px 14px', border: 'none', cursor: 'pointer',
+                    background: isExpanded ? `${accent}15` : 'transparent',
+                    color: isExpanded ? accent : '#94a3b8',
+                    fontFamily: "'Inter', sans-serif", fontSize: '0.8125rem', fontWeight: 600,
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{
+                    width: 22, height: 22, borderRadius: '50%', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    background: isExpanded ? `${accent}30` : '#1e293b',
+                    color: isExpanded ? accent : '#64748b', fontSize: 11, fontWeight: 700,
+                  }}>
+                    {sec.index}
+                  </span>
+                  <span style={{ flex: 1 }}>{sec.titlePt}</span>
+                  <ChevronDown size={16} style={{
+                    transition: 'transform 0.2s',
+                    transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                  }} />
+                </button>
+                {isExpanded && (
+                  <div style={{ padding: '12px 14px', fontSize: '0.8125rem', color: '#e2e8f0', lineHeight: 1.7 }}>
+                    <PlayButton text={sec.content} size={14} />
+                    <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: sec.content.replace(/\n/g, '<br/>') }} />
+
+                    {sec.exerciseData && (
+                      <ExerciseWindow
+                        exerciseId={exerciseIds[sec.index] || sec.index}
+                        prompt={sec.exerciseData.prompt}
+                        hints={sec.exerciseData.hints}
+                        expectedInputExample={
+                          typeof (sec.exerciseData.expectedSolution as any)?.expectedInput === 'string'
+                            ? String((sec.exerciseData.expectedSolution as any).expectedInput) : undefined
+                        }
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+      /* ═══ DESKTOP: Sidebar + conteudo (original, sem mudanças) ═══ */
       <div style={{ display: 'flex', gap: 24, maxWidth: 1200, margin: '0 auto', padding: '0 16px 24px' }}>
         <div style={{
           width: 240, flexShrink: 0, position: 'sticky', top: 24, alignSelf: 'flex-start',
@@ -263,6 +334,7 @@ export default function LessonView({
           )}
         </div>
       </div>
+      )}
 
       {termModals.loading && (
         <div style={{

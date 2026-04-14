@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { SECTORS, DEFAULT_SECTOR, getNRsForSector } from '@/data/sectors'
 import { NR_INDEX } from '@/data/nr-index'
 import NRGrid from '@/components/NRGrid'
-import FloatingButton from '@/components/FloatingButton'
 
 const C = {
   bg: '#050d1a', cyan: '#00d4ff', muted: '#94a3b8', dim: '#64748b',
@@ -109,7 +108,6 @@ export default function HomePage() {
         progress={{}}
       />
 
-      <FloatingButton />
     </main>
   )
 }
