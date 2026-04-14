@@ -1,9 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { SECTORS, DEFAULT_SECTOR, getNRsForSector, type Sector } from '@/data/sectors'
+import { SECTORS, DEFAULT_SECTOR, getNRsForSector } from '@/data/sectors'
 import { NR_INDEX } from '@/data/nr-index'
-import AppHeader from '@/components/AppHeader'
 import NRGrid from '@/components/NRGrid'
 import FloatingButton from '@/components/FloatingButton'
 
@@ -40,14 +39,29 @@ export default function HomePage() {
     .filter(Boolean) as any[]
 
   return (
-    <>
-      <AppHeader activeSectorSlug={activeSector} activeSectorName={sector.name} />
-      <main>
-        {/* Sector Tabs */}
-        <div style={{
-          maxWidth: 1200, margin: '80px auto 0', padding: '0 1.5rem',
-          display: 'flex', gap: '0.5rem', flexWrap: 'wrap',
+    <main style={{ minHeight: '100vh', backgroundColor: C.bg }}>
+      {/* Title bar */}
+      <div style={{
+        padding: '1rem 1.5rem',
+        borderBottom: `1px solid ${C.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: '0.75rem',
+      }}>
+        <h1 style={{
+          margin: 0, fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+          fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em',
+          background: 'linear-gradient(135deg, #e2e8f0, #00d4ff)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
+          O Interativo Mundo da{' '}
+          <span style={{
+            background: 'linear-gradient(135deg, #00d4ff, #0a84ff)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>NR</span>
+        </h1>
+
+        {/* Sector tabs inline */}
+        <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
           {SECTORS.map(s => {
             const isActive = s.slug === activeSector
             const color = SECTOR_COLORS[s.slug] || C.cyan
@@ -56,11 +70,11 @@ export default function HomePage() {
                 key={s.slug}
                 onClick={() => setActiveSector(s.slug)}
                 style={{
-                  padding: '0.625rem 1.25rem', borderRadius: 9999, cursor: 'pointer',
+                  padding: '0.375rem 0.875rem', borderRadius: 9999, cursor: 'pointer',
                   backgroundColor: isActive ? `${color}20` : 'transparent',
                   border: `1.5px solid ${isActive ? color : C.border}`,
                   color: isActive ? color : C.muted,
-                  fontSize: '0.8125rem', fontWeight: isActive ? 700 : 400,
+                  fontSize: '0.75rem', fontWeight: isActive ? 700 : 400,
                   fontFamily: C.font, transition: 'all 0.2s',
                 }}
               >
@@ -69,34 +83,33 @@ export default function HomePage() {
             )
           })}
         </div>
+      </div>
 
-        {/* Sector Description */}
-        <div style={{
-          maxWidth: 1200, margin: '1rem auto 0', padding: '0 1.5rem',
+      {/* Sector description */}
+      <div style={{ maxWidth: 1200, margin: '0.75rem auto 0', padding: '0 1.5rem' }}>
+        <p style={{
+          fontSize: '0.8125rem', color: C.dim, fontFamily: C.font,
+          maxWidth: 600, lineHeight: 1.6, margin: 0,
         }}>
-          <p style={{
-            fontSize: '0.8125rem', color: C.dim, fontFamily: C.font,
-            maxWidth: 600, lineHeight: 1.6,
+          {sector.description}
+          <span style={{
+            marginLeft: 8, fontSize: '0.6875rem',
+            color: SECTOR_COLORS[activeSector] || C.cyan,
           }}>
-            {sector.description}
-            <span style={{
-              marginLeft: 8, fontSize: '0.6875rem',
-              color: SECTOR_COLORS[activeSector] || C.cyan,
-            }}>
-              {nrsWithRelevance.length} NRs aplicáveis
-            </span>
-          </p>
-        </div>
+            {nrsWithRelevance.length} NRs aplicáveis
+          </span>
+        </p>
+      </div>
 
-        {/* NR Grid */}
-        <NRGrid
-          nrs={nrsWithRelevance}
-          sectorSlug={activeSector}
-          sectorName={sector.name}
-          progress={{}}
-        />
-      </main>
+      {/* NR Grid */}
+      <NRGrid
+        nrs={nrsWithRelevance}
+        sectorSlug={activeSector}
+        sectorName={sector.name}
+        progress={{}}
+      />
+
       <FloatingButton />
-    </>
+    </main>
   )
 }

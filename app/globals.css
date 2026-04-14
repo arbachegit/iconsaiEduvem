@@ -11,8 +11,7 @@ body {
   font-family: 'Inter', -apple-system, system-ui, sans-serif;
   overflow-x: hidden;
   min-height: 100vh;
-  /* Compensa o header fixed (64px) */
-  padding-top: 64px;
+  padding-top: 0;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -164,7 +163,7 @@ input[type="range"]::-moz-range-thumb:hover {
 
 /* ─── Responsive ───────────────────────────────────────────── */
 @media (max-width: 768px) {
-  body { padding-top: 60px; }
+  body { padding-top: 0; }
 }
 
 /* ════════════════════════════════════════════════════════════

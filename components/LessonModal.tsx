@@ -157,7 +157,22 @@ export default function LessonModal({
       })
       const fastJson = await fastRes.json()
       if (generationRef.current !== genId) return    // cancelado por troca de difficulty
-      if (!fastRes.ok) throw new Error(fastJson?.error || 'Falha ao gerar inicio da aula')
+      if (!fastRes.ok) {
+        // Fallback: conteúdo placeholder quando API não está disponível
+        const nrNum = String(nrId).padStart(2, '0')
+        setTitle(`NR-${nrNum} — Aula em Preparação`)
+        setSections([
+          { index: 1, titlePt: 'O que é e por que existe', content: `A NR-${nrNum} é uma das Normas Regulamentadoras do Ministério do Trabalho e Emprego que estabelece requisitos de segurança e saúde ocupacional. Esta norma é fundamental para garantir a proteção dos trabalhadores no setor de atuação correspondente.\n\nO conteúdo completo desta aula está sendo preparado pela equipe pedagógica e estará disponível em breve com exemplos práticos adaptados ao seu setor.` },
+          { index: 2, titlePt: 'O que a norma exige', content: `Os requisitos específicos da NR-${nrNum} incluem obrigações para empregadores e empregados, procedimentos de segurança, treinamentos obrigatórios e medidas de controle de riscos.\n\nAguarde — esta seção está em desenvolvimento.` },
+          { index: 3, titlePt: 'Aplicação prática no setor', content: 'Esta seção apresentará casos concretos de aplicação da norma no seu setor de atuação, com exemplos reais de empresas que implementaram as exigências com sucesso.\n\nConteúdo em preparação.' },
+          { index: 4, titlePt: 'Exemplo', content: 'Exemplo prático com dados reais será incluído nesta seção.\n\nConteúdo em preparação.' },
+          { index: 5, titlePt: 'Erros comuns e como evitar', content: 'Os principais erros de conformidade e as melhores práticas para evitá-los serão detalhados aqui.\n\nConteúdo em preparação.' },
+          { index: 6, titlePt: 'Resumo e pontos-chave', content: `Resumo dos pontos essenciais da NR-${nrNum} para o seu setor.\n\nConteúdo em preparação.` },
+        ])
+        setStage1Loading(false)
+        setRestLoading(false)
+        return
+      }
 
       // Se veio do cache em menos de STAGE1_MIN_MS, espera o complemento
       await waitAtLeast(stage1Started, STAGE1_MIN_MS)
@@ -261,10 +276,6 @@ export default function LessonModal({
           padding: '14px 20px', borderBottom: '1px solid #1e293b',
           background: `linear-gradient(135deg, ${accent}0F, ${accent}03)`,
         }}>
-          {/* Logo i.ai a esquerda do titulo */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/i.ai.svg" alt="i.ai" style={{ height: 40, width: 40, flexShrink: 0 }} />
-
           {/* Titulo */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
@@ -350,15 +361,6 @@ export default function LessonModal({
 
           {/* Canon: unica chamada do laboratorio e o LabCallout/LabBanner no topo do body.
               Nao renderizar botao Laboratorio no header. */}
-
-          {/* Logo ai.t tutor (entre difficulty e X) */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/ait.svg"
-            alt="Learn by ai.t tutor"
-            style={{ height: 36, flexShrink: 0, opacity: 0.9 }}
-            title="Learn by ai.t tutor"
-          />
 
           {/* Fechar */}
           <button
