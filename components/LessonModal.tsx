@@ -297,29 +297,29 @@ export default function LessonModal({
             }}>
               {title || (isLoading ? 'A Ella IA está preparando sua aula...' : nrTitle)}
             </h2>
-          </div>
-
-          {/* Verbos rotativos */}
-          {isLoading && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '6px 12px', borderRadius: 9999,
-              border: `1px solid ${accent}4D`, background: `${accent}0D`,
-            }}>
-              <Sparkles size={14} style={{ animation: 'starGlow 2s ease-in-out infinite', flexShrink: 0 }} />
-              <span style={{
-                fontSize: 12, fontWeight: 600,
-                background: 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899, #22d3ee)',
-                backgroundSize: '200% 100%',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                animation: 'gradientShift 3s linear infinite',
+            {/* Badge meditando — abaixo do título, horizontal sem quebra */}
+            {isLoading && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '4px 10px', borderRadius: 9999, marginTop: 6,
+                border: `1px solid ${accent}4D`, background: `${accent}0D`,
+                whiteSpace: 'nowrap',
               }}>
-                {currentVerb}…
-              </span>
-              <span style={{ fontSize: 11, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{elapsed}s</span>
-            </div>
-          )}
+                <Sparkles size={12} style={{ animation: 'starGlow 2s ease-in-out infinite', flexShrink: 0 }} />
+                <span style={{
+                  fontSize: 11, fontWeight: 600,
+                  background: 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899, #22d3ee)',
+                  backgroundSize: '200% 100%',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  animation: 'gradientShift 3s linear infinite',
+                }}>
+                  {currentVerb}…
+                </span>
+                <span style={{ fontSize: 10, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{elapsed}s</span>
+              </div>
+            )}
+          </div>
 
           {/* Difficulty toggle */}
           {!hideDifficulty && <div style={{
