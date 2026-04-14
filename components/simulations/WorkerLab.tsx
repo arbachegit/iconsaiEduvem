@@ -301,8 +301,8 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
       <div className="worker-lab-container" style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)',
-        gap: 20,
-        marginBottom: 20,
+        gap: 10,
+        marginBottom: 8,
       }}>
         {/* SVG do trabalhador */}
         <div className="worker-lab-main" style={{
@@ -342,7 +342,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
               marginBottom: 10,
             }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>
-                Equipamentos de proteção
+                Escolha um equipamento para atender o <span title="Programa de Condições e Meio Ambiente de Trabalho" style={{ color: '#22d3ee', cursor: 'help', borderBottom: '1px dotted #22d3ee' }}>PCMAT</span>
               </div>
               {selected.size > 0 && (
                 <button
@@ -359,7 +359,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
               )}
             </div>
 
-            <div className="worker-lab-controls" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="worker-lab-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {items.map(item => {
                 const isActive = selected.has(item.id)
                 const itemColor = isActive ? ACCENT : '#475569'
@@ -369,51 +369,19 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
                     onClick={() => toggle(item.id)}
                     title={item.fullName || item.label}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 12px', borderRadius: 10,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 40, height: 40, borderRadius: 10,
                       border: `2px solid ${isActive ? ACCENT : '#1e293b'}`,
                       background: isActive ? `${ACCENT}0D` : 'transparent',
                       cursor: 'pointer',
                       opacity: isActive ? 1 : 0.5,
                       transition: 'all 0.2s',
-                      width: '100%', textAlign: 'left',
                       boxShadow: isActive ? `0 0 10px ${ACCENT}33` : 'none',
                       fontFamily: 'inherit',
+                      padding: 0,
                     }}
                   >
-                    <div style={{ flexShrink: 0 }}>
-                      <EpiIcon type={item.id} color={itemColor} size={26} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 11, fontWeight: 700, color: isActive ? '#e2e8f0' : '#94a3b8',
-                        lineHeight: 1.2,
-                      }}>
-                        {item.fullName || item.label}
-                      </div>
-                      {item.description && (
-                        <div style={{
-                          fontSize: 9, color: '#64748b', lineHeight: 1.3, marginTop: 2,
-                        }}>
-                          {item.description}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{
-                      flexShrink: 0, width: 18, height: 18, borderRadius: 4,
-                      border: `1.5px solid ${isActive ? ACCENT : '#334155'}`,
-                      background: isActive ? ACCENT : 'transparent',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, color: isActive ? '#050d1a' : 'transparent',
-                      fontWeight: 900,
-                    }}>
-                      ✓
-                    </div>
-                    {isActive && item.fullName && (
-                      <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
-                        <PlayButton text={`${item.fullName}. ${item.description || ''}`} size={12} />
-                      </div>
-                    )}
+                    <EpiIcon type={item.id} color={itemColor} size={22} />
                   </button>
                 )
               })}
@@ -423,18 +391,20 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
               marginTop: 10, fontSize: 11, color: '#64748b',
               textAlign: 'center',
             }}>
-              {selected.size === 0 ? 'Nenhum EPI selecionado' :
+              {selected.size === 0 ? 'Selecione os EPIs necessários' :
                selected.size === items.length ? '✓ Proteção completa' :
                `${selected.size} de ${items.length} itens ativos`}
             </div>
           </div>
 
           {/* STAT CARDS */}
-          <StatCard label="Grau de risco" value={stats.riskGrade} color={RISK_COLOR[stats.riskGrade]} icon={AlertTriangle}/>
-          <StatCard label="Risco de acidente grave" value={`${stats.riskFatal}%`} color={fatalColor} icon={AlertTriangle}/>
-          <StatCard label="Conformidade" value={`${stats.compliance}%`} color={compColor} icon={ShieldCheck}/>
-          <StatCard label="Expectativa de vida" value={`${stats.lifeExpectancy} anos`} color={stats.lifeExpectancy >= 75 ? '#4ade80' : stats.lifeExpectancy >= 68 ? '#fbbf24' : '#ef4444'} icon={Heart}/>
-          <StatCard label="Multa estimada" value={stats.fineEstimate === 0 ? 'R$ 0' : `R$ ${stats.fineEstimate.toLocaleString('pt-BR')}`} color={stats.fineEstimate === 0 ? '#4ade80' : '#ef4444'}/>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <StatCard label="Grau de risco" value={stats.riskGrade} color={RISK_COLOR[stats.riskGrade]} icon={AlertTriangle}/>
+            <StatCard label="Risco de acidente grave" value={`${stats.riskFatal}%`} color={fatalColor} icon={AlertTriangle}/>
+            <StatCard label="Conformidade" value={`${stats.compliance}%`} color={compColor} icon={ShieldCheck}/>
+            <StatCard label="Expectativa de vida" value={`${stats.lifeExpectancy} anos`} color={stats.lifeExpectancy >= 75 ? '#4ade80' : stats.lifeExpectancy >= 68 ? '#fbbf24' : '#ef4444'} icon={Heart}/>
+            <StatCard label="Multa estimada" value={stats.fineEstimate === 0 ? 'R$ 0' : `R$ ${stats.fineEstimate.toLocaleString('pt-BR')}`} color={stats.fineEstimate === 0 ? '#4ade80' : '#ef4444'}/>
+          </div>
         </div>
       </div>
 
@@ -443,7 +413,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
         background: '#080c14',
         border: `1px solid ${ACCENT}55`,
         borderRadius: 12,
-        padding: '18px 22px',
+        padding: '14px 8px',
         position: 'relative',
       }}>
         <div style={{
@@ -461,14 +431,6 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
           }}>Ella</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-          <div style={{
-            flexShrink: 0, width: 42, height: 42, borderRadius: '50%',
-            background: `${ACCENT}22`, border: `1.5px solid ${ACCENT}88`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: `0 0 14px ${ACCENT}55`,
-          }}>
-            <Bot size={22} color={ACCENT} />
-          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div key={`${selected.size}-${lastAction?.id}`} className="fadeIn"
               style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3, marginBottom: 6 }}>
