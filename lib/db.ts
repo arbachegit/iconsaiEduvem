@@ -1,31 +1,39 @@
 /**
- * Supabase client — schema-aware via SUPABASE_SCHEMA env var.
- *
- * Portabilidade: trocar de banco/schema = mudar 2 vars no .env.local.
- * Hoje: banco do iconsaiIcon, schema 'eduven'.
- * Futuro: banco próprio do eduven, schema 'public'.
+ * DB stub — Eduvem POC usa dados hardcoded.
+ * Este stub existe apenas para que imports existentes não quebrem.
  */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-
-const url = process.env.SUPABASE_URL
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-const schema = process.env.SUPABASE_SCHEMA || 'eduven'
-
-if (!url || !key) {
-  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env.local')
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _client: SupabaseClient<any, any, any> | null = null
-
-export function getDb() {
-  if (!_client) {
-    _client = createClient(url!, key!, {
-      db: { schema },
-      auth: { persistSession: false },
-    })
-  }
-  return _client
+const EMPTY_CHAIN: any = {
+  select: () => EMPTY_CHAIN,
+  eq: () => EMPTY_CHAIN,
+  neq: () => EMPTY_CHAIN,
+  gte: () => EMPTY_CHAIN,
+  lte: () => EMPTY_CHAIN,
+  like: () => EMPTY_CHAIN,
+  ilike: () => EMPTY_CHAIN,
+  in: () => EMPTY_CHAIN,
+  or: () => EMPTY_CHAIN,
+  order: () => EMPTY_CHAIN,
+  limit: () => EMPTY_CHAIN,
+  range: () => EMPTY_CHAIN,
+  single: () => ({ data: null, error: null, count: 0 }),
+  maybeSingle: () => ({ data: null, error: null }),
+  insert: () => ({ data: null, error: null, select: () => ({ single: () => ({ data: null, error: null }) }) }),
+  upsert: () => ({ data: null, error: null }),
+  update: () => EMPTY_CHAIN,
+  delete: () => EMPTY_CHAIN,
+  then: (resolve: any) => resolve({ data: [], error: null, count: 0 }),
+  _exec: () => ({ data: [], error: null, count: 0 }),
 }
 
-export const SCHEMA = schema
+export function getDb() {
+  return {
+    from: (_table?: string) => EMPTY_CHAIN,
+    rpc: (_name?: string, _params?: any) => ({ data: null, error: null }),
+  }
+}
+
+export function from(_table?: string) { return EMPTY_CHAIN }
+
+export const SCHEMA = 'eduvem'

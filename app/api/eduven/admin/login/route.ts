@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Comparação direta (MVP). Futuro: bcrypt.compare(password, data.password_hash)
-    if (data.password_hash !== password) {
+    if ((data as any).password_hash !== password) {
       return NextResponse.json(
         { error: 'Credenciais inválidas' },
         { status: 401 }

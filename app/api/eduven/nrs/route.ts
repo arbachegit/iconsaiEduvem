@@ -47,18 +47,18 @@ export async function GET(req: NextRequest) {
     if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 })
 
     // Junta + filtra + ordena
-    const relMap = new Map((rel || []).map(r => [r.nr_id, r]))
-    const enriched = (nrs || [])
-      .map(nr => {
-        const r = relMap.get(nr.id)
+    const relMap = new Map((rel || []).map((r: any) => [r.nr_id, r]))
+    const enriched = (nrs as any[] || [])
+      .map((nr: any) => {
+        const r = relMap.get(nr.id) as any
         return {
           ...nr,
           relevance: r?.relevance ?? 0,
           rationale: r?.rationale ?? null,
         }
       })
-      .filter(nr => nr.relevance >= minRelevance)
-      .sort((a, b) => b.relevance - a.relevance || a.id - b.id)
+      .filter((nr: any) => nr.relevance >= minRelevance)
+      .sort((a: any, b: any) => b.relevance - a.relevance || a.id - b.id)
 
     return NextResponse.json({ nrs: enriched, sector })
   } catch (err) {

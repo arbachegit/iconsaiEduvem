@@ -354,7 +354,7 @@ Gere AGORA as secoes 2, 3, 4, 5 e 6, mantendo continuidade tonal. TODO exemplo d
       titlePt: canonMeta.titlePt, // forca canonico
       content: String(raw.content || ''),
       // preserva exerciseData inline se veio (level 2 do fallback)
-      exerciseData: (raw as { exerciseData?: Record<string, unknown> }).exerciseData as EnrichedSection['exerciseData'],
+      exerciseData: (raw as any).exerciseData as any,
     }
   })
 

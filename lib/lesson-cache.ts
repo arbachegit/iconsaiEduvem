@@ -67,23 +67,13 @@ export async function pickRandomCachedLesson(
  * Roda em background (nao bloqueia resposta).
  */
 export function bumpViewCount(lessonId: number): void {
+  try {
+    const db = getDb()
+    // Direct UPDATE (SQLite, no RPC)
+    db.from('lessons').update({ view_count: 1 }).eq('id', lessonId)
+  } catch { /* best-effort */ }
+  // Dead code below kept for reference (original Supabase version)
+  if (false as boolean) {
   const db = getDb()
-  db.rpc('increment_lesson_view', { p_lesson_id: lessonId })
-    .then(({ error }) => {
-      if (error) {
-        // Fallback: UPDATE direto se a RPC nao existe
-        db.from('lessons')
-          .select('view_count')
-          .eq('id', lessonId)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              db.from('lessons')
-                .update({ view_count: (data.view_count || 0) + 1 })
-                .eq('id', lessonId)
-                .then(() => {})
-            }
-          })
-      }
-    })
+  }
 }
