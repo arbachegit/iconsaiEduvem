@@ -125,7 +125,7 @@ export default function LabBanner({
                   Laboratório desta NR está em desenvolvimento.
                 </div>
                 <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
-                  A primeira simulação pronta é a da <strong style={{ color: '#22d3ee' }}>NR-06 EPI</strong>. Abra-a pra ver o trabalhador ganhando proteção em tempo real, com ai.tutor explicando cada passo. Mais simulações vêm em breve.
+                  A primeira simulação pronta é a da <strong style={{ color: '#22d3ee' }}>NR-06 EPI</strong>. Abra-a pra ver o trabalhador ganhando proteção em tempo real, com Ella explicando cada passo. Mais simulações vêm em breve.
                 </div>
               </>
             ) : (

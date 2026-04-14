@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bot, Play, Pause, Loader2 } from 'lucide-react'
 
-interface AiTutorAgentProps {
+interface EllaAgentProps {
   /** Texto que o agente esta dizendo agora */
   message: string
   /** Cor accent (vem do setor) */
@@ -13,7 +13,7 @@ interface AiTutorAgentProps {
 }
 
 /**
- * AiTutorAgent — agente do laboratorio em primeira pessoa.
+ * EllaAgent — agente do laboratorio em primeira pessoa.
  *
  * Visual:
  *   - Avatar Bot com glow pulsante
@@ -27,7 +27,7 @@ interface AiTutorAgentProps {
  * O texto vem de fora (lib/simulation-insights.ts gera por contexto).
  * Aqui so renderiza + cuida do TTS.
  */
-export default function AiTutorAgent({ message, color, thinking = false }: AiTutorAgentProps) {
+export default function EllaAgent({ message, color, thinking = false }: EllaAgentProps) {
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle')
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const blobUrlRef = useRef<string | null>(null)
@@ -121,7 +121,7 @@ export default function AiTutorAgent({ message, color, thinking = false }: AiTut
             WebkitTextFillColor: 'transparent',
             animation: 'gradientShift 3s linear infinite',
           }}>
-            ai.tutor
+            Ella
           </div>
           <div style={{ fontSize: 10, color: '#64748b' }}>do laboratorio</div>
 

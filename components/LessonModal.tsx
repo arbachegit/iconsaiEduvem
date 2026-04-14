@@ -64,12 +64,17 @@ interface Props {
   sectorSlug: string
   sectorName: string
   initialDifficulty?: 'easier' | 'same' | 'harder'
+  singleDifficulty?: boolean
   onClose: () => void
 }
 
+// NRs que só têm 1 nível de dificuldade
+const SINGLE_DIFFICULTY_NRS = new Set([1]) // NR-01
+
 export default function LessonModal({
-  nrId, nrCode, nrTitle, sectorSlug, sectorName, initialDifficulty = 'same', onClose,
+  nrId, nrCode, nrTitle, sectorSlug, sectorName, initialDifficulty = 'same', singleDifficulty, onClose,
 }: Props) {
+  const hideDifficulty = singleDifficulty ?? SINGLE_DIFFICULTY_NRS.has(nrId)
   const meta = getSectorMeta(sectorSlug)
   const accent = meta?.color || '#00d4ff'
   const accentSoft = meta?.colorSoft || 'rgba(0,212,255,0.10)'
@@ -317,7 +322,7 @@ export default function LessonModal({
           )}
 
           {/* Difficulty toggle */}
-          <div style={{
+          {!hideDifficulty && <div style={{
             display: 'inline-flex', gap: 4, padding: 3, borderRadius: 9999,
             border: '1px solid #1e293b', background: 'rgba(15,23,42,0.6)',
           }}>
@@ -357,7 +362,7 @@ export default function LessonModal({
                 <Skull size={15} />
               </button>
             )}
-          </div>
+          </div>}
 
           {/* Canon: unica chamada do laboratorio e o LabCallout/LabBanner no topo do body.
               Nao renderizar botao Laboratorio no header. */}
@@ -425,7 +430,7 @@ export default function LessonModal({
         </div>
 
         {/* ═══ DIFFICULTY FOOTER ═══ */}
-        <DifficultyFooter counts={difficultyCounts} currentDifficulty={currentDifficulty} />
+        {!hideDifficulty && <DifficultyFooter counts={difficultyCounts} currentDifficulty={currentDifficulty} />}
       </div>
 
       <style>{`

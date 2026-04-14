@@ -114,7 +114,7 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
         setOutput(data.executionOutput || 'Resposta correta! Parabéns!')
         setState('correct')
       } else {
-        setOutput(data.executionOutput || `Resposta incorreta. ${data.errorType ? `Tipo de erro: ${data.errorType}` : ''}\nAperte "Debugar" para entender o que deu errado.`)
+        setOutput(data.executionOutput || `Resposta incorreta. ${data.errorType ? `Tipo de erro: ${data.errorType}` : ''}\nClique em "A Ella vai te explicar melhor" para entender o que deu errado.`)
         setState('error')
       }
     } catch {
@@ -180,22 +180,7 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
               {showHints ? 'Ocultar dicas' : `Ver dicas (${hints.length})`}
             </button>
           )}
-          <button
-            onClick={handleCalcular}
-            disabled={!userInput.trim() || state === 'executing' || state === 'debugging'}
-            style={{
-              padding: '8px 18px', borderRadius: 8,
-              border: 'none',
-              background: '#f97316',
-              color: '#fff',
-              fontWeight: 700, fontSize: 13, cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
-              opacity: !userInput.trim() ? 0.4 : 1,
-            }}
-            title='Calcula a última expressão que termina com "=" na resposta'
-          >
-            Calcular
-          </button>
+          {/* Calcular removido */}
         </div>
       </div>
 
@@ -238,7 +223,7 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
             opacity: !userInput.trim() ? 0.4 : 1,
           }}
         >
-          {state === 'executing' ? 'Corrigindo...' : 'Corrigir'}
+          {state === 'executing' ? 'Diagnosticando...' : 'Diagnosticar'}
         </button>
 
         <button
@@ -255,7 +240,7 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
             opacity: state !== 'error' ? 0.3 : 1,
           }}
         >
-          {state === 'debugging' ? 'Debugando...' : 'Debugar'}
+          {state === 'debugging' ? 'A Ella está explicando...' : 'A Ella vai te explicar melhor'}
         </button>
 
         {score !== null && (

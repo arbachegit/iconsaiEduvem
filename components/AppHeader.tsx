@@ -105,7 +105,7 @@ export default function AppHeader({ activeSectorSlug, activeSectorName }: AppHea
         </div>
       </div>
 
-      {/* RIGHT: sector badge + ai.t tutor logo */}
+      {/* RIGHT: sector badge + Ella logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         {activeSectorSlug && activeSectorName && meta && (
           <Link
@@ -134,7 +134,7 @@ export default function AppHeader({ activeSectorSlug, activeSectorName }: AppHea
         <div style={{ width: 1, height: 24, backgroundColor: C.border }} />
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/aitutor-logo.png" alt="Learn by ai.t tutor" style={{ height: 40, objectFit: 'contain' }} />
+        <img src="/aitutor-logo.png" alt="Learn by Ella" style={{ height: 40, objectFit: 'contain' }} />
       </div>
     </header>
   )

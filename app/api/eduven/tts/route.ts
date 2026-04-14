@@ -41,7 +41,7 @@ const VOICE_INSTRUCTIONS = `Fale em português brasileiro com sotaque paulistano
  */
 function preprocessForTTS(text: string): string {
   return text
-    // Remove citacoes [NR-X, item Y.Z] (o ai.tutor muitas vezes faz referencia,
+    // Remove citacoes [NR-X, item Y.Z] (o Ella muitas vezes faz referencia,
     // mas TTS ler tudo fica ruim; usuario pode olhar o texto pra detalhes)
     .replace(/\[NR-\d+,[^\]]+\]/g, '')
     // Remove markdown

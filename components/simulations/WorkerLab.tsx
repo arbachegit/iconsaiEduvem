@@ -12,7 +12,7 @@ import { trackEvent } from '@/lib/track-event'
 
    Em vez de slider linear, o aluno escolhe QUAIS EPIs/medidas
    de protecao ativar. Começa tudo desligado (estado "sem EPI").
-   Cada toggle muda o trabalhador SVG, as stats e o ai.tutor.
+   Cada toggle muda o trabalhador SVG, as stats e o Ella.
    ═══════════════════════════════════════════════════════════ */
 
 export type RiskGrade = 'Baixo' | 'Médio' | 'Alto' | 'Crítico'
@@ -51,9 +51,9 @@ export interface WorkerLabConfig {
   }
   /** Riscos visuais quando ZERO protecao */
   baseRisks?: WorkerRisks
-  /** ai.tutor quando zero protecao */
+  /** Ella quando zero protecao */
   tutorEmpty?: string
-  /** ai.tutor quando tudo selecionado */
+  /** Ella quando tudo selecionado */
   tutorFull?: string
   /** LEGADO: levels (backward compat — converte pra items on the fly) */
   levels?: Array<{
@@ -213,7 +213,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
     return w
   }, [selected, items, config.defaultBackground, baseRisks])
 
-  // ai.tutor: reage a ultima acao ou estado geral
+  // Ella: reage a ultima acao ou estado geral
   const tutorText = useMemo(() => {
     if (selected.size === 0) {
       return config.tutorEmpty || config.levels?.[0]?.tutor?.headline || 'Sem proteção. Arraste pra ativar.'
@@ -438,7 +438,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
         </div>
       </div>
 
-      {/* ai.tutor */}
+      {/* Ella */}
       <div style={{
         background: '#080c14',
         border: `1px solid ${ACCENT}55`,
@@ -458,7 +458,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
             backgroundSize: '200% 100%',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             animation: 'gradientShift 3s linear infinite',
-          }}>ai.tutor</span>
+          }}>Ella</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
           <div style={{

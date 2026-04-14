@@ -33,7 +33,7 @@ function makeSim(nrId: number, title: string, subtitle: string, config: WorkerLa
 }
 
 // Titulos/subtitulos curtos pra header do LabBanner. Descricao completa
-// vem dos textos do ai.tutor em cada nivel.
+// vem dos textos do Ella em cada nivel.
 const SIMULATIONS: Record<number, SimulationDefinition | undefined> = {
   1:  makeSim(1,  'Como o PGR evita acidentes', 'Mexa no slider e veja como o gerenciamento de riscos muda a segurança da operação.', CFG_NR01),
   3:  makeSim(3,  'Quando a fiscalização embarga', 'Veja como descumprimentos levam a embargo e como a conformidade reverte.', CFG_NR03),
