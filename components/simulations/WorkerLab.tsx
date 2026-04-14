@@ -296,133 +296,102 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
   const fullTutorText = [tutorText, tutorDetail, tutorWarning, tutorSuggestion].filter(Boolean).join(' ')
 
   return (
-    <div>
-      {/* Grid: SVG + botoes/stats */}
-      <div className="worker-lab-container" style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)',
-        gap: 10,
-        marginBottom: 8,
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {/* Título + PCMAT */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '6px 4px',
       }}>
-        {/* SVG do trabalhador */}
-        <div className="worker-lab-main" style={{
-          background: '#080c14',
-          border: '1px solid #1e293b',
-          borderRadius: 10,
-          padding: 16,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: 360,
-        }}>
-          <WorkerSVG
-            mood={workerProps.mood ?? 0}
-            helmet={workerProps.helmet}
-            gloves={workerProps.gloves}
-            boots={workerProps.boots}
-            harness={workerProps.harness}
-            mask={workerProps.mask}
-            goggles={workerProps.goggles}
-            earProtection={workerProps.earProtection}
-            apron={workerProps.apron}
-            risks={workerProps.risks}
-            backgroundHint={workerProps.backgroundHint}
-          />
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>
+          Escolha um equipamento para atender o <span title="Programa de Condições e Meio Ambiente de Trabalho" style={{ color: '#22d3ee', cursor: 'help', borderBottom: '1px dotted #22d3ee' }}>PCMAT</span>
         </div>
-
-        {/* Botoes toggle + stats */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* BOTOES DE EPI */}
-          <div style={{
-            background: '#080c14', border: '1px solid #1e293b', borderRadius: 10,
-            padding: 14,
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              marginBottom: 10,
-            }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>
-                Escolha um equipamento para atender o <span title="Programa de Condições e Meio Ambiente de Trabalho" style={{ color: '#22d3ee', cursor: 'help', borderBottom: '1px dotted #22d3ee' }}>PCMAT</span>
-              </div>
-              {selected.size > 0 && (
-                <button
-                  onClick={clearAll}
-                  style={{
-                    fontSize: 10, color: '#ef4444', background: 'none',
-                    border: '1px solid #ef444444', borderRadius: 6,
-                    padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit',
-                    fontWeight: 600,
-                  }}
-                >
-                  Tirar todos
-                </button>
-              )}
-            </div>
-
-            <div className="worker-lab-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {items.map(item => {
-                const isActive = selected.has(item.id)
-                const itemColor = isActive ? ACCENT : '#475569'
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => toggle(item.id)}
-                    title={item.fullName || item.label}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      width: 40, height: 40, borderRadius: 10,
-                      border: `2px solid ${isActive ? ACCENT : '#1e293b'}`,
-                      background: isActive ? `${ACCENT}0D` : 'transparent',
-                      cursor: 'pointer',
-                      opacity: isActive ? 1 : 0.5,
-                      transition: 'all 0.2s',
-                      boxShadow: isActive ? `0 0 10px ${ACCENT}33` : 'none',
-                      fontFamily: 'inherit',
-                      padding: 0,
-                    }}
-                  >
-                    <EpiIcon type={item.id} color={itemColor} size={22} />
-                  </button>
-                )
-              })}
-            </div>
-
-            <div style={{
-              marginTop: 10, fontSize: 11, color: '#64748b',
-              textAlign: 'center',
-            }}>
-              {selected.size === 0 ? 'Selecione os EPIs necessários' :
-               selected.size === items.length ? '✓ Proteção completa' :
-               `${selected.size} de ${items.length} itens ativos`}
-            </div>
-          </div>
-
-          {/* STAT CARDS */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <StatCard label="Grau de risco" value={stats.riskGrade} color={RISK_COLOR[stats.riskGrade]} icon={AlertTriangle}/>
-            <StatCard label="Risco de acidente grave" value={`${stats.riskFatal}%`} color={fatalColor} icon={AlertTriangle}/>
-            <StatCard label="Conformidade" value={`${stats.compliance}%`} color={compColor} icon={ShieldCheck}/>
-            <StatCard label="Expectativa de vida" value={`${stats.lifeExpectancy} anos`} color={stats.lifeExpectancy >= 75 ? '#4ade80' : stats.lifeExpectancy >= 68 ? '#fbbf24' : '#ef4444'} icon={Heart}/>
-            <StatCard label="Multa estimada" value={stats.fineEstimate === 0 ? 'R$ 0' : `R$ ${stats.fineEstimate.toLocaleString('pt-BR')}`} color={stats.fineEstimate === 0 ? '#4ade80' : '#ef4444'}/>
-          </div>
-        </div>
+        {selected.size > 0 && (
+          <button onClick={clearAll} style={{
+            fontSize: 10, color: '#ef4444', background: 'none',
+            border: '1px solid #ef444444', borderRadius: 6,
+            padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
+          }}>Tirar todos</button>
+        )}
       </div>
 
-      {/* Ella */}
+      {/* Badge de status */}
+      <div style={{ textAlign: 'center', fontSize: 10, color: '#64748b', padding: '2px 0' }}>
+        {selected.size === 0 ? 'Selecione os EPIs necessários' :
+         selected.size === items.length ? '✓ Proteção completa' :
+         `${selected.size} de ${items.length} itens ativos`}
+      </div>
+
+      {/* SVG do trabalhador — FULL WIDTH, sem nada nas laterais */}
       <div style={{
-        background: '#080c14',
-        border: `1px solid ${ACCENT}55`,
-        borderRadius: 12,
-        padding: '14px 8px',
-        position: 'relative',
+        background: '#080c14', border: '1px solid #1e293b', borderRadius: 6,
+        padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: 280,
+      }}>
+        <WorkerSVG
+          mood={workerProps.mood ?? 0}
+          helmet={workerProps.helmet}
+          gloves={workerProps.gloves}
+          boots={workerProps.boots}
+          harness={workerProps.harness}
+          mask={workerProps.mask}
+          goggles={workerProps.goggles}
+          earProtection={workerProps.earProtection}
+          apron={workerProps.apron}
+          risks={workerProps.risks}
+          backgroundHint={workerProps.backgroundHint}
+        />
+      </div>
+
+      {/* Botões EPI — horizontal, ícones only, full width */}
+      <div className="worker-lab-controls" style={{
+        display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center',
+        padding: '4px 0',
+      }}>
+        {items.map(item => {
+          const isActive = selected.has(item.id)
+          const itemColor = isActive ? ACCENT : '#475569'
+          return (
+            <button
+              key={item.id}
+              onClick={() => toggle(item.id)}
+              title={item.fullName || item.label}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 38, height: 38, borderRadius: 8,
+                border: `2px solid ${isActive ? ACCENT : '#1e293b'}`,
+                background: isActive ? `${ACCENT}15` : '#080c14',
+                cursor: 'pointer', opacity: isActive ? 1 : 0.45,
+                transition: 'all 0.15s', padding: 0,
+                boxShadow: isActive ? `0 0 8px ${ACCENT}33` : 'none',
+              }}
+            >
+              <EpiIcon type={item.id} color={itemColor} size={20} />
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Stat Cards — grid 2 colunas, compacto */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+        <StatCard label="Grau de risco" value={stats.riskGrade} color={RISK_COLOR[stats.riskGrade]} icon={AlertTriangle}/>
+        <StatCard label="Risco acidente" value={`${stats.riskFatal}%`} color={fatalColor} icon={AlertTriangle}/>
+        <StatCard label="Conformidade" value={`${stats.compliance}%`} color={compColor} icon={ShieldCheck}/>
+        <StatCard label="Vida estimada" value={`${stats.lifeExpectancy}a`} color={stats.lifeExpectancy >= 75 ? '#4ade80' : stats.lifeExpectancy >= 68 ? '#fbbf24' : '#ef4444'} icon={Heart}/>
+        <StatCard label="Multa" value={stats.fineEstimate === 0 ? 'R$ 0' : `R$ ${stats.fineEstimate.toLocaleString('pt-BR')}`} color={stats.fineEstimate === 0 ? '#4ade80' : '#ef4444'}/>
+      </div>
+
+      {/* Ella — full width, espaço mínimo */}
+      <div style={{
+        background: '#080c14', border: `1px solid ${ACCENT}44`,
+        borderRadius: 6, padding: '10px 6px', position: 'relative',
       }}>
         <div style={{
-          position: 'absolute', top: -12, left: 18, padding: '3px 12px',
-          background: '#0c1320', borderRadius: 9999, border: `1px solid ${ACCENT}55`,
-          fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
-          display: 'flex', alignItems: 'center', gap: 6,
+          position: 'absolute', top: -10, left: 8, padding: '2px 10px',
+          background: '#0c1320', borderRadius: 9999, border: `1px solid ${ACCENT}44`,
+          fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
+          display: 'flex', alignItems: 'center', gap: 4,
         }}>
-          <Bot size={11} color={ACCENT} />
+          <Bot size={10} color={ACCENT} />
           <span style={{
             background: 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899, #22d3ee)',
             backgroundSize: '200% 100%',
@@ -430,45 +399,38 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
             animation: 'gradientShift 3s linear infinite',
           }}>Ella</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div key={`${selected.size}-${lastAction?.id}`} className="fadeIn"
-              style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3, marginBottom: 6 }}>
-              <TutorTextWithCitations text={tutorText} />
-            </div>
-            {tutorDetail && (
-              <div style={{ fontSize: 14, lineHeight: 1.65, color: '#cbd5e1' }}>
-                <TutorTextWithCitations text={tutorDetail} />
-              </div>
-            )}
-            {tutorWarning && (
-              <div style={{
-                marginTop: 10, padding: '8px 12px',
-                background: 'rgba(249,115,22,0.10)',
-                border: '1px solid rgba(249,115,22,0.3)',
-                borderRadius: 8,
-                fontSize: 13, color: '#fbbf24', lineHeight: 1.5,
-                display: 'flex', alignItems: 'flex-start', gap: 8,
-              }}>
-                <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
-                <span><strong>Cuidado:</strong> <TutorTextWithCitations text={tutorWarning} /></span>
-              </div>
-            )}
-            {tutorSuggestion && (
-              <div style={{
-                marginTop: 10, padding: '8px 12px',
-                background: 'rgba(34,211,238,0.06)',
-                border: '1px solid rgba(34,211,238,0.2)',
-                borderRadius: 8,
-                fontSize: 13, color: '#94a3b8', lineHeight: 1.5,
-                fontStyle: 'italic',
-              }}>
-                <strong style={{ color: ACCENT, fontStyle: 'normal' }}>↗ Tenta isso:</strong> <TutorTextWithCitations text={tutorSuggestion} />
-              </div>
-            )}
+        <div style={{ marginTop: 4 }}>
+          <div key={`${selected.size}-${lastAction?.id}`} className="fadeIn"
+            style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3, marginBottom: 4 }}>
+            <TutorTextWithCitations text={tutorText} />
           </div>
-          <div style={{ flexShrink: 0 }}>
-            <PlayButton text={fullTutorText} size={14} />
+          {tutorDetail && (
+            <div style={{ fontSize: 13, lineHeight: 1.6, color: '#cbd5e1' }}>
+              <TutorTextWithCitations text={tutorDetail} />
+            </div>
+          )}
+          {tutorWarning && (
+            <div style={{
+              marginTop: 6, padding: '6px 8px',
+              background: 'rgba(249,115,22,0.10)', border: '1px solid rgba(249,115,22,0.3)',
+              borderRadius: 6, fontSize: 12, color: '#fbbf24', lineHeight: 1.4,
+              display: 'flex', alignItems: 'flex-start', gap: 6,
+            }}>
+              <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span><strong>Cuidado:</strong> <TutorTextWithCitations text={tutorWarning} /></span>
+            </div>
+          )}
+          {tutorSuggestion && (
+            <div style={{
+              marginTop: 6, padding: '6px 8px',
+              background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.2)',
+              borderRadius: 6, fontSize: 12, color: '#94a3b8', lineHeight: 1.4, fontStyle: 'italic',
+            }}>
+              <strong style={{ color: ACCENT, fontStyle: 'normal' }}>↗ Tenta isso:</strong> <TutorTextWithCitations text={tutorSuggestion} />
+            </div>
+          )}
+          <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
+            <PlayButton text={fullTutorText} size={12} />
           </div>
         </div>
       </div>

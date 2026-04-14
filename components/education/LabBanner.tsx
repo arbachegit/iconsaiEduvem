@@ -68,12 +68,12 @@ export default function LabBanner({
   const SimComponent = simulation?.Component;
 
   return (
-    <div ref={laboratoryRef} style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px 24px' }}>
+    <div ref={laboratoryRef} style={{ maxWidth: 1200, margin: '0 auto', padding: '0 8px 12px' }}>
       <div style={{
         background: '#0c1320',
         border: `1px solid ${ready ? 'rgba(34,211,238,0.6)' : 'rgba(34,211,238,0.3)'}`,
-        borderRadius: 12,
-        padding: 24,
+        borderRadius: 8,
+        padding: 10,
         boxShadow: glow
           ? '0 0 48px rgba(34,211,238,0.5), inset 0 0 32px rgba(34,211,238,0.08)'
           : ready
