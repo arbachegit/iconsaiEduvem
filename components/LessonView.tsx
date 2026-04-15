@@ -135,7 +135,7 @@ export default function LessonView({
 
       {/* ═══ MOBILE: seções empilhadas com chevron ═══ */}
       {isMobile ? (
-        <div style={{ padding: '0 4px 12px' }}>
+        <div style={{ padding: '0 2px 8px' }}>
           {sections.map(sec => {
             const isExpanded = expandedSections.has(sec.index)
             return (

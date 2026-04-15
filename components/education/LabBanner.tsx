@@ -68,7 +68,7 @@ export default function LabBanner({
   const SimComponent = simulation?.Component;
 
   return (
-    <div ref={laboratoryRef} style={{ maxWidth: 1200, margin: '0 auto', padding: '0 4px 6px' }}>
+    <div ref={laboratoryRef} style={{ maxWidth: 1200, margin: '0 auto', padding: '0 2px 4px' }}>
       <div style={{
         background: '#0c1320',
         border: `1px solid ${ready ? 'rgba(34,211,238,0.6)' : 'rgba(34,211,238,0.3)'}`,
