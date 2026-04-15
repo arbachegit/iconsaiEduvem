@@ -5,8 +5,9 @@ import { SECTORS, DEFAULT_SECTOR, getNRsForSector } from '@/data/sectors'
 import { NR_INDEX } from '@/data/nr-index'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import NRGrid from '@/components/NRGrid'
-import { GitFork } from 'lucide-react'
+import { GitFork, BookOpen } from 'lucide-react'
 import NRCorrelationGraph from '@/components/NRCorrelationGraph'
+import StorytellingModal from '@/components/StorytellingModal'
 
 const C = {
   bg: '#050d1a', cyan: '#00d4ff', muted: '#94a3b8', dim: '#64748b',
@@ -28,6 +29,7 @@ const MOBILE_NAMES: Record<string, string> = {
 export default function HomePage() {
   const [activeSector, setActiveSector] = useState(DEFAULT_SECTOR)
   const [showGraph, setShowGraph] = useState(false)
+  const [showStorytelling, setShowStorytelling] = useState(false)
   const isMobile = useIsMobile()
   const sector = SECTORS.find(s => s.slug === activeSector)!
   const nrMap = new Map(NR_INDEX.filter(n => n.status === 'vigente').map(n => [n.id, n]))
@@ -70,24 +72,69 @@ export default function HomePage() {
             }}>NR</span>
           </h1>
           {isMobile && (
-            <button
-              onClick={() => setShowGraph(true)}
-              title="Mapa de Correlações entre NRs"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 28, height: 28, borderRadius: 8, cursor: 'pointer',
-                border: `1.5px solid ${C.cyan}44`,
-                background: `${C.cyan}0A`, color: C.cyan,
-                flexShrink: 0,
-              }}
-            >
-              <GitFork size={14} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <button
+                onClick={() => setShowStorytelling(true)}
+                title="Storytelling — plano de ação com IA"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 28, height: 28, borderRadius: 8, cursor: 'pointer',
+                  border: `1.5px solid #a855f744`,
+                  background: '#a855f70A', color: '#a855f7',
+                }}
+              >
+                <BookOpen size={14} />
+              </button>
+              <button
+                onClick={() => setShowGraph(true)}
+                title="Mapa de Correlações entre NRs"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 28, height: 28, borderRadius: 8, cursor: 'pointer',
+                  border: `1.5px solid ${C.cyan}44`,
+                  background: `${C.cyan}0A`, color: C.cyan,
+                }}
+              >
+                <GitFork size={14} />
+              </button>
+            </div>
           )}
         </div>
 
-        {/* Linha 2: tabs de setor (+ grafo no desktop) */}
+        {/* Linha 2: botões (storytelling + grafo) à esquerda, depois tabs de setor */}
         <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'nowrap' }}>
+          {/* Botões desktop-only; no mobile eles ficam na Linha 1 ao lado do título */}
+          {!isMobile && (
+            <>
+              <button
+                onClick={() => setShowStorytelling(true)}
+                title="Storytelling — plano de ação com IA"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
+                  border: `1.5px solid #a855f744`,
+                  background: '#a855f70A', color: '#a855f7',
+                  transition: 'all 0.2s', flexShrink: 0, marginRight: 4,
+                }}
+              >
+                <BookOpen size={16} />
+              </button>
+              <button
+                onClick={() => setShowGraph(true)}
+                title="Mapa de Correlações entre NRs"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
+                  border: `1.5px solid ${C.cyan}44`,
+                  background: `${C.cyan}0A`, color: C.cyan,
+                  transition: 'all 0.2s', flexShrink: 0, marginRight: 8,
+                }}
+              >
+                <GitFork size={16} />
+              </button>
+            </>
+          )}
+
           {SECTORS.map(s => {
             const isActive = s.slug === activeSector
             const color = SECTOR_COLORS[s.slug] || C.cyan
@@ -112,21 +159,6 @@ export default function HomePage() {
               </button>
             )
           })}
-
-          {/* Grafo button — desktop only (mobile is in line 1) */}
-          {!isMobile && <button
-            onClick={() => setShowGraph(true)}
-            title="Mapa de Correlações entre NRs"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
-              border: `1.5px solid ${C.cyan}44`,
-              background: `${C.cyan}0A`, color: C.cyan,
-              transition: 'all 0.2s', flexShrink: 0,
-            }}
-          >
-            <GitFork size={16} />
-          </button>}
         </div>
       </div>
 
@@ -160,6 +192,16 @@ export default function HomePage() {
           nrs={nrsWithRelevance}
           sectorName={sector.name}
           onClose={() => setShowGraph(false)}
+        />
+      )}
+
+      {/* Storytelling Modal */}
+      {showStorytelling && (
+        <StorytellingModal
+          nrs={nrsWithRelevance}
+          sectorSlug={activeSector}
+          sectorName={sector.name}
+          onClose={() => setShowStorytelling(false)}
         />
       )}
     </main>
