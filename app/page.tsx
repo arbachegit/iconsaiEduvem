@@ -45,29 +45,49 @@ export default function HomePage() {
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: C.bg }}>
-      {/* Title bar — compact */}
+      {/* Title bar */}
       <div style={{
-        padding: isMobile ? '0.5rem 0.5rem' : '0.625rem 1rem',
+        padding: isMobile ? '0.375rem 0.375rem' : '0.625rem 1rem',
         borderBottom: `1px solid ${C.border}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: '0.5rem',
+        display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        justifyContent: 'space-between',
+        gap: isMobile ? '0.25rem' : '0.5rem',
       }}>
-        <h1 style={{
-          margin: 0, fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
-          fontWeight: 800, fontSize: isMobile ? '0.9375rem' : '1.125rem',
-          letterSpacing: '-0.02em', whiteSpace: 'nowrap',
-          background: 'linear-gradient(135deg, #e2e8f0, #00d4ff)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        }}>
-          O Interativo Mundo da{' '}
-          <span style={{
-            background: 'linear-gradient(135deg, #00d4ff, #0a84ff)',
+        {/* Linha 1: título + botão grafo */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1 style={{
+            margin: 0, fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+            fontWeight: 800, fontSize: isMobile ? '0.875rem' : '1.125rem',
+            letterSpacing: '-0.02em', whiteSpace: 'nowrap',
+            background: 'linear-gradient(135deg, #e2e8f0, #00d4ff)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>NR</span>
-        </h1>
+          }}>
+            O Interativo Mundo da{' '}
+            <span style={{
+              background: 'linear-gradient(135deg, #00d4ff, #0a84ff)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>NR</span>
+          </h1>
+          {isMobile && (
+            <button
+              onClick={() => setShowGraph(true)}
+              title="Mapa de Correlações entre NRs"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 28, height: 28, borderRadius: 8, cursor: 'pointer',
+                border: `1.5px solid ${C.cyan}44`,
+                background: `${C.cyan}0A`, color: C.cyan,
+                flexShrink: 0,
+              }}
+            >
+              <GitFork size={14} />
+            </button>
+          )}
+        </div>
 
+        {/* Linha 2: tabs de setor (+ grafo no desktop) */}
         <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'nowrap' }}>
-          {/* Sector tabs */}
           {SECTORS.map(s => {
             const isActive = s.slug === activeSector
             const color = SECTOR_COLORS[s.slug] || C.cyan
@@ -78,14 +98,14 @@ export default function HomePage() {
                 onClick={() => setActiveSector(s.slug)}
                 style={{
                   padding: isMobile ? '0.25rem 0.5rem' : '0.375rem 0.75rem',
-                  borderRadius: 9999, cursor: 'pointer',
+                  borderRadius: 9999, cursor: 'pointer', flex: isMobile ? 1 : undefined,
                   backgroundColor: isActive ? `${color}20` : 'transparent',
                   border: `1.5px solid ${isActive ? color : C.border}`,
                   color: isActive ? color : C.muted,
                   fontSize: isMobile ? '0.625rem' : '0.6875rem',
                   fontWeight: isActive ? 700 : 400,
                   fontFamily: C.font, transition: 'all 0.2s',
-                  whiteSpace: 'nowrap',
+                  whiteSpace: 'nowrap', textAlign: 'center',
                 }}
               >
                 {label}
@@ -93,26 +113,25 @@ export default function HomePage() {
             )
           })}
 
-          {/* Grafo button */}
-          <button
+          {/* Grafo button — desktop only (mobile is in line 1) */}
+          {!isMobile && <button
             onClick={() => setShowGraph(true)}
             title="Mapa de Correlações entre NRs"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: isMobile ? 28 : 32, height: isMobile ? 28 : 32,
-              borderRadius: 8, cursor: 'pointer',
+              width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
               border: `1.5px solid ${C.cyan}44`,
               background: `${C.cyan}0A`, color: C.cyan,
               transition: 'all 0.2s', flexShrink: 0,
             }}
           >
-            <GitFork size={isMobile ? 14 : 16} />
-          </button>
+            <GitFork size={16} />
+          </button>}
         </div>
       </div>
 
       {/* Sector description — compact */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: isMobile ? '0.375rem 0.5rem 0' : '0.5rem 1rem 0' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: isMobile ? '0.25rem 0.375rem 0' : '0.5rem 1rem 0' }}>
         <p style={{
           fontSize: isMobile ? '0.6875rem' : '0.75rem', color: C.dim, fontFamily: C.font,
           maxWidth: 600, lineHeight: 1.5, margin: 0,

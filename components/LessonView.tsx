@@ -135,7 +135,7 @@ export default function LessonView({
 
       {/* ═══ MOBILE: seções empilhadas com chevron ═══ */}
       {isMobile ? (
-        <div style={{ padding: '0 12px 24px' }}>
+        <div style={{ padding: '0 4px 12px' }}>
           {sections.map(sec => {
             const isExpanded = expandedSections.has(sec.index)
             return (
@@ -193,7 +193,7 @@ export default function LessonView({
         </div>
       ) : (
       /* ═══ DESKTOP: Sidebar + conteudo (original, sem mudanças) ═══ */
-      <div style={{ display: 'flex', gap: 24, maxWidth: 1200, margin: '0 auto', padding: '0 16px 24px' }}>
+      <div style={{ display: 'flex', gap: 24, maxWidth: 1200, margin: '0 auto', padding: '0 8px 16px' }}>
         <div style={{
           width: 240, flexShrink: 0, position: 'sticky', top: 24, alignSelf: 'flex-start',
           background: '#0c1320', borderRadius: 12, padding: 8, border: '1px solid #1e293b',
