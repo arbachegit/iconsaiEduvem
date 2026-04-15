@@ -110,7 +110,7 @@ export default function NRCorrelationGraph({ nrs, sectorName, onClose }: NRCorre
     label: 'Ella',
     placeholder: 'Clique em um nó pra Ella analisar as correlações.',
     ttsEndpoint: '/api/eduven/tts',
-    autoPlayAudio: true,
+    autoPlayAudio: false,
     typewriterCps: 75,
     onNodeSelect: async (node, neighbors) => callEllaAnalysis(node, neighbors, sectorName, nrTitleById),
   }), [sectorName, nrTitleById]);
