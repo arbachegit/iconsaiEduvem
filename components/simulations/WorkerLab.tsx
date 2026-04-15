@@ -157,8 +157,10 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [lastAction, setLastAction] = useState<{ id: string; added: boolean } | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState(true)
 
   const toggle = useCallback((id: string) => {
+    setShowOnboarding(false)
     setSelected(prev => {
       const next = new Set(prev)
       if (next.has(id)) {
@@ -370,6 +372,45 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
           )
         })}
       </div>
+
+      {/* Onboarding overlay — appears when no EPI selected */}
+      {showOnboarding && selected.size === 0 && (
+        <div style={{
+          position: 'relative', marginTop: -4, marginBottom: 4,
+          background: 'rgba(5,13,26,0.85)', borderRadius: 10,
+          padding: '24px 16px 20px', textAlign: 'center',
+          border: '1px solid rgba(34,211,238,0.2)',
+        }}>
+          {/* Close button */}
+          <button
+            onClick={() => setShowOnboarding(false)}
+            style={{
+              position: 'absolute', top: 6, right: 8,
+              background: 'none', border: 'none', color: '#64748b',
+              fontSize: 18, cursor: 'pointer', fontFamily: 'inherit',
+              lineHeight: 1, padding: '2px 6px',
+            }}
+            aria-label="Fechar"
+          >
+            &times;
+          </button>
+          {/* Hand-drawn swoopy arrow pointing down */}
+          <svg width="60" height="50" viewBox="0 0 60 50" fill="none" style={{ margin: '0 auto 8px', display: 'block' }}>
+            <path
+              d="M 30 4 Q 10 6 8 20 Q 6 34 22 38 Q 32 40 30 46"
+              stroke="#22d3ee" strokeWidth="2" fill="none" strokeLinecap="round"
+              strokeDasharray="4 3"
+            />
+            {/* Arrowhead */}
+            <path d="M 26 42 L 30 48 L 34 42" stroke="#22d3ee" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <div style={{
+            color: '#e2e8f0', fontSize: 14, fontWeight: 600, lineHeight: 1.4,
+          }}>
+            Escolha uma EPI para ver o que ocorrer&aacute;
+          </div>
+        </div>
+      )}
 
       {/* Stat Cards — grid 2 colunas, compacto */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>

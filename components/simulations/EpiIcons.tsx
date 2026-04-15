@@ -78,75 +78,151 @@ function NoneIcon({ color, size = 24 }: IconProps) {
 
 function HelmetIcon({ color, size = 24 }: IconProps) {
   return <S size={size}>
-    <path d="M 5 14 Q 5 6 12 6 Q 19 6 19 14 Z" fill={`${color}33`} stroke={color} strokeWidth="1.8" strokeLinejoin="round"/>
-    <rect x="4" y="14" width="16" height="2.5" rx="0.5" fill={color}/>
-    <line x1="8" y1="10" x2="16" y2="10" stroke={color} strokeWidth="1" opacity="0.6"/>
+    {/* Dome */}
+    <path d="M 5 14 Q 5 5.5 12 5 Q 19 5.5 19 14" fill={`${color}33`} stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
+    {/* Brim */}
+    <path d="M 3 14.5 L 21 14.5 L 20 16.5 L 4 16.5 Z" fill={`${color}33`} stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+    {/* Ridge line */}
+    <path d="M 8 9.5 Q 12 8 16 9.5" stroke={color} strokeWidth="1" opacity="0.5" fill="none"/>
+    {/* Chin strap */}
+    <path d="M 7 16.5 L 6 20" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M 17 16.5 L 18 20" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M 6 20 Q 12 21.5 18 20" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
   </S>
 }
 
 function GlovesIcon({ color, size = 24 }: IconProps) {
   return <S size={size}>
-    <path d="M 6 10 Q 5 10 5 12 L 5 18 Q 5 20 7 20 L 11 20 Q 13 20 13 18 L 13 12 Q 13 10 12 10 Z" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
-    <path d="M 7 10 L 5 8" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M 14 10 Q 13 10 13 12 L 13 18 Q 13 20 15 20 L 19 20 Q 21 20 21 18 L 21 12 Q 21 10 20 10 Z" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
-    <path d="M 19 10 L 21 8" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Single glove — palm, 4 fingers + thumb */}
+    {/* Cuff */}
+    <rect x="7" y="17" width="10" height="4" rx="1" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
+    {/* Palm */}
+    <path d="M 7 17 L 7 10 Q 7 8 9 8 L 15 8 Q 17 8 17 10 L 17 17" fill={`${color}33`} stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+    {/* Fingers — index, middle, ring, pinky */}
+    <path d="M 8.5 8 L 8.5 5" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M 11 8 L 11 4" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M 13.5 8 L 13.5 4.5" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M 16 8 L 16 5.5" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Finger tips */}
+    <circle cx="8.5" cy="4.5" r="1" fill={`${color}33`} stroke={color} strokeWidth="1"/>
+    <circle cx="11" cy="3.5" r="1" fill={`${color}33`} stroke={color} strokeWidth="1"/>
+    <circle cx="13.5" cy="4" r="1" fill={`${color}33`} stroke={color} strokeWidth="1"/>
+    <circle cx="16" cy="5" r="1" fill={`${color}33`} stroke={color} strokeWidth="1"/>
+    {/* Thumb — separated, angled out */}
+    <path d="M 7 13 L 4 11 L 3.5 9" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+    <circle cx="3.5" cy="8.5" r="1" fill={`${color}33`} stroke={color} strokeWidth="1"/>
   </S>
 }
 
 function BootsIcon({ color, size = 24 }: IconProps) {
   return <S size={size}>
-    <path d="M 5 6 L 5 16 Q 5 20 3 20 L 1 20 Q 0 20 0 19 L 0 17 L 4 16.5 L 4 6 Z" fill={`${color}33`} stroke={color} strokeWidth="1.2" transform="translate(4,2) scale(1.2)"/>
-    <path d="M 12 6 L 12 16 Q 12 20 14 20 L 16 20 Q 17 20 17 19 L 17 17 L 13 16.5 L 13 6 Z" fill={`${color}33`} stroke={color} strokeWidth="1.2" transform="translate(1,2) scale(1.1)"/>
-    <rect x="4" y="20" width="7" height="2" fill={color} rx="0.5"/>
-    <rect x="13" y="20" width="7" height="2" fill={color} rx="0.5"/>
+    {/* Single safety boot — profile view */}
+    {/* Shaft (ankle/leg part) */}
+    <path d="M 8 4 L 8 14 L 6 14 L 6 4 Z" fill={`${color}33`} stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+    {/* Boot body going forward */}
+    <path d="M 6 14 L 6 18 L 3 19 L 3 20.5 L 19 20.5 L 19 18 Q 19 14 14 14 L 8 14" fill={`${color}33`} stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+    {/* Steel toe cap — reinforced front */}
+    <path d="M 16 15 Q 19.5 15 19 18 L 19 20.5" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.7"/>
+    {/* Thick sole with tread */}
+    <rect x="3" y="20.5" width="16" height="2" rx="0.5" fill={color}/>
+    <line x1="5" y1="21.5" x2="5" y2="22.5" stroke={`${color}33`} strokeWidth="1"/>
+    <line x1="8" y1="21.5" x2="8" y2="22.5" stroke={`${color}33`} strokeWidth="1"/>
+    <line x1="11" y1="21.5" x2="11" y2="22.5" stroke={`${color}33`} strokeWidth="1"/>
+    <line x1="14" y1="21.5" x2="14" y2="22.5" stroke={`${color}33`} strokeWidth="1"/>
+    <line x1="17" y1="21.5" x2="17" y2="22.5" stroke={`${color}33`} strokeWidth="1"/>
+    {/* Boot top trim */}
+    <line x1="6" y1="4" x2="8" y2="4" stroke={color} strokeWidth="2" strokeLinecap="round"/>
   </S>
 }
 
 function HarnessIcon({ color, size = 24 }: IconProps) {
   return <S size={size}>
-    <line x1="10" y1="4" x2="10" y2="16" stroke={color} strokeWidth="2"/>
-    <line x1="14" y1="4" x2="14" y2="16" stroke={color} strokeWidth="2"/>
-    <line x1="8" y1="10" x2="16" y2="10" stroke={color} strokeWidth="2"/>
-    <line x1="8" y1="16" x2="16" y2="16" stroke={color} strokeWidth="2"/>
-    <circle cx="12" cy="8" r="2" fill={color}/>
-    <path d="M 12 8 Q 18 2 20 4" stroke={color} strokeWidth="1.5" fill="none" strokeDasharray="2 1"/>
+    {/* Shoulder straps forming X */}
+    <path d="M 6 3 L 12 12 L 18 3" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round"/>
+    <path d="M 6 3 L 12 12 L 6 21" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round"/>
+    <path d="M 18 3 L 12 12 L 18 21" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round"/>
+    {/* Waist belt */}
+    <path d="M 5 14 L 19 14" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    {/* Leg loops */}
+    <path d="M 7 18 Q 9 20 11 18" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    <path d="M 13 18 Q 15 20 17 18" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    {/* D-ring at chest center */}
+    <circle cx="12" cy="10" r="2" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
+    <circle cx="12" cy="10" r="0.8" fill={color}/>
   </S>
 }
 
 function MaskIcon({ color, size = 24 }: IconProps) {
   return <S size={size}>
-    <path d="M 4 10 Q 4 14 12 16 Q 20 14 20 10 L 20 8 Q 12 5 4 8 Z" fill={`${color}33`} stroke={color} strokeWidth="1.8" strokeLinejoin="round"/>
-    <circle cx="9" cy="11" r="1.5" fill={color} opacity="0.6"/>
-    <circle cx="15" cy="11" r="1.5" fill={color} opacity="0.6"/>
-    <line x1="4" y1="10" x2="1" y2="9" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <line x1="20" y1="10" x2="23" y2="9" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Half-face respirator */}
+    {/* Main mask body — covers nose and mouth */}
+    <path d="M 5 8 Q 5 6 12 5 Q 19 6 19 8 L 19 14 Q 19 17 12 18 Q 5 17 5 14 Z" fill={`${color}33`} stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+    {/* Nose bridge */}
+    <path d="M 9 7 L 12 5.5 L 15 7" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    {/* Left filter cartridge */}
+    <circle cx="4" cy="12" r="2.5" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
+    <circle cx="4" cy="12" r="1" fill={color} opacity="0.4"/>
+    {/* Right filter cartridge */}
+    <circle cx="20" cy="12" r="2.5" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
+    <circle cx="20" cy="12" r="1" fill={color} opacity="0.4"/>
+    {/* Elastic straps */}
+    <path d="M 4 10 L 2 7 L 1 5" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+    <path d="M 20 10 L 22 7 L 23 5" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+    {/* Center seam */}
+    <line x1="12" y1="8" x2="12" y2="16" stroke={color} strokeWidth="0.8" opacity="0.4"/>
   </S>
 }
 
 function GogglesIcon({ color, size = 24 }: IconProps) {
   return <S size={size}>
-    <ellipse cx="8" cy="12" rx="4.5" ry="3.5" fill={`${color}22`} stroke={color} strokeWidth="1.8"/>
-    <ellipse cx="16" cy="12" rx="4.5" ry="3.5" fill={`${color}22`} stroke={color} strokeWidth="1.8"/>
-    <line x1="12.5" y1="12" x2="11.5" y2="12" stroke={color} strokeWidth="1.5"/>
-    <line x1="3.5" y1="12" x2="1" y2="11" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <line x1="20.5" y1="12" x2="23" y2="11" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Wrap-around single lens frame */}
+    <path d="M 3 10 Q 3 7 12 7 Q 21 7 21 10 L 21 14 Q 21 17 12 17 Q 3 17 3 14 Z" fill={`${color}22`} stroke={color} strokeWidth="1.8" strokeLinejoin="round"/>
+    {/* Lens shine */}
+    <path d="M 7 9 Q 10 8.5 13 9" stroke={color} strokeWidth="0.8" opacity="0.4" fill="none" strokeLinecap="round"/>
+    {/* Ventilation holes on top */}
+    <circle cx="8" cy="8" r="0.6" fill={color} opacity="0.5"/>
+    <circle cx="12" cy="7.5" r="0.6" fill={color} opacity="0.5"/>
+    <circle cx="16" cy="8" r="0.6" fill={color} opacity="0.5"/>
+    {/* Elastic band — left */}
+    <path d="M 3 11 L 1 10.5" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    {/* Elastic band — right */}
+    <path d="M 21 11 L 23 10.5" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    {/* Nose bridge notch */}
+    <path d="M 10.5 17 Q 12 18.5 13.5 17" stroke={color} strokeWidth="1" fill="none"/>
   </S>
 }
 
 function EarIcon({ color, size = 24 }: IconProps) {
   return <S size={size}>
-    <ellipse cx="6" cy="12" rx="3" ry="4.5" fill={color} opacity="0.7"/>
-    <ellipse cx="18" cy="12" rx="3" ry="4.5" fill={color} opacity="0.7"/>
-    <path d="M 7 8 Q 12 5 17 8" stroke={color} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+    {/* Headband arch */}
+    <path d="M 5 10 Q 5 3 12 3 Q 19 3 19 10" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round"/>
+    {/* Left ear cup */}
+    <rect x="2" y="9" width="6" height="8" rx="2" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
+    {/* Left cup padding */}
+    <ellipse cx="5" cy="13" rx="1.8" ry="2.5" fill={color} opacity="0.3"/>
+    {/* Right ear cup */}
+    <rect x="16" y="9" width="6" height="8" rx="2" fill={`${color}33`} stroke={color} strokeWidth="1.5"/>
+    {/* Right cup padding */}
+    <ellipse cx="19" cy="13" rx="1.8" ry="2.5" fill={color} opacity="0.3"/>
+    {/* Headband padding */}
+    <path d="M 7 5 Q 12 2.5 17 5" stroke={color} strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.3"/>
   </S>
 }
 
 function ApronIcon({ color, size = 24 }: IconProps) {
   return <S size={size}>
-    <path d="M 7 4 L 17 4 L 19 18 L 5 18 Z" fill={`${color}33`} stroke={color} strokeWidth="1.8" strokeLinejoin="round"/>
-    <line x1="7" y1="4" x2="5" y2="2" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <line x1="17" y1="4" x2="19" y2="2" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <line x1="9" y1="10" x2="15" y2="10" stroke={color} strokeWidth="1" opacity="0.5"/>
+    {/* Neck loop */}
+    <path d="M 9 5 Q 12 2 15 5" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    {/* Apron front panel — wider at bottom */}
+    <path d="M 7 5 L 7 20 Q 7 21 8 21 L 16 21 Q 17 21 17 20 L 17 5" fill={`${color}33`} stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+    {/* Waist ties */}
+    <path d="M 7 12 L 3 13" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M 17 12 L 21 13" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Tie knots */}
+    <circle cx="2.5" cy="13.3" r="1" fill={color} opacity="0.5"/>
+    <circle cx="21.5" cy="13.3" r="1" fill={color} opacity="0.5"/>
+    {/* Pocket */}
+    <rect x="9" y="14" width="6" height="4" rx="0.5" fill="none" stroke={color} strokeWidth="1" opacity="0.4"/>
   </S>
 }
 
