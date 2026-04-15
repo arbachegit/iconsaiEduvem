@@ -300,54 +300,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
   const fullTutorText = [tutorText, tutorDetail, tutorWarning, tutorSuggestion].filter(Boolean).join(' ')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
-
-      {/* ═══ MODAL OPACO SOBRE O BONECO ═══ */}
-      {showOnboarding && selected.size === 0 && (
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 20,
-          background: 'rgba(5,10,20,0.88)',
-          borderRadius: 8,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          gap: 8,
-        }}>
-          {/* X em quadrado */}
-          <button
-            onClick={() => setShowOnboarding(false)}
-            style={{
-              position: 'absolute', top: 8, right: 8,
-              width: 28, height: 28, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', pointerEvents: 'auto',
-              background: 'rgba(255,255,255,0.08)',
-              border: '1.5px solid rgba(255,255,255,0.25)',
-              borderRadius: 6, color: '#e2e8f0', cursor: 'pointer',
-              fontSize: 16, fontWeight: 700, fontFamily: 'inherit', lineHeight: 1,
-            }}
-          >
-            ✕
-          </button>
-
-          {/* Texto handwriter */}
-          <div style={{
-            fontFamily: "'Caveat', 'Segoe Script', 'Comic Sans MS', cursive",
-            fontSize: isMobile ? 18 : 22, color: '#ffffff',
-            fontWeight: 600, textAlign: 'center', lineHeight: 1.3,
-          }}>
-            Escolha uma EPI para<br/>ver o que ocorrerá
-          </div>
-
-          {/* Seta handwriter branca — curva orgânica, contínua, apontando para baixo */}
-          <svg width="50" height="60" viewBox="0 0 50 60" fill="none">
-            <path
-              d="M 25 2 C 15 8 12 18 16 30 C 20 42 24 48 25 54"
-              stroke="#ffffff" strokeWidth="2.2" fill="none" strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path d="M 20 49 L 25 57 L 30 49" stroke="#ffffff" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-      )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {/* Título + PCMAT */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -372,11 +325,11 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
          `${selected.size} de ${items.length} itens ativos`}
       </div>
 
-      {/* SVG do trabalhador — FULL WIDTH, sem nada nas laterais */}
+      {/* SVG do trabalhador — FULL WIDTH + modal onboarding sobreposto */}
       <div style={{
         background: '#080c14', border: '1px solid #1e293b', borderRadius: 6,
         padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        minHeight: 280,
+        minHeight: 280, position: 'relative',
       }}>
         <WorkerSVG
           mood={workerProps.mood ?? 0}
@@ -391,6 +344,40 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
           risks={workerProps.risks}
           backgroundHint={workerProps.backgroundHint}
         />
+
+        {/* Modal onboarding — APENAS sobre o boneco */}
+        {showOnboarding && selected.size === 0 && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 10,
+            background: 'rgba(5,10,20,0.88)', borderRadius: 6,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            <button
+              onClick={() => setShowOnboarding(false)}
+              style={{
+                position: 'absolute', top: 6, right: 6,
+                width: 26, height: 26, display: 'flex', alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1.5px solid rgba(255,255,255,0.25)',
+                borderRadius: 5, color: '#e2e8f0', cursor: 'pointer',
+                fontSize: 14, fontWeight: 700, lineHeight: 1,
+              }}
+            >✕</button>
+            <div style={{
+              fontFamily: "'Caveat', cursive",
+              fontSize: isMobile ? 18 : 24, color: '#fff',
+              fontWeight: 600, textAlign: 'center', lineHeight: 1.3,
+            }}>
+              Escolha uma EPI para<br/>ver o que ocorrerá
+            </div>
+            <svg width="40" height="50" viewBox="0 0 40 50" fill="none">
+              <path d="M 20 2 C 12 8 10 18 14 28 C 18 38 19 42 20 46" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M 16 42 L 20 48 L 24 42" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        )}
       </div>
 
       {/* Botões EPI — ícone + label, horizontal wrap */}
