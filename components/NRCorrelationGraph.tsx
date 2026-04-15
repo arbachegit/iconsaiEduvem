@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import ForceGraph, {
-  type ForceGraphNode, type ForceGraphLink, type CategoryStyle, type AgentFooterConfig,
+  type ForceGraphNode, type ForceGraphLink, type CategoryStyle, type AgentFooterConfig, type AgentResponseObject,
 } from './ForceGraph';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -11,6 +11,8 @@ import ForceGraph, {
    ═══════════════════════════════════════════════════════════════ */
 
 interface NRItem { id: number; code: string; title: string; relevance: number }
+
+type NeighborEntry = { node: ForceGraphNode; strength: number; label?: string }
 
 interface NRCorrelationGraphProps {
   nrs: NRItem[];
@@ -55,25 +57,39 @@ const RAW_LINKS: { s: number; t: number; strength: number; label?: string }[] = 
 function nrId(n: number) { return `nr-${n}`; }
 function nrLabel(n: number) { return String(n).padStart(2, '0'); }
 
-function ellaAnalysis(
+function fallbackEllaAnalysis(
   node: ForceGraphNode,
   neighbors: Array<{ node: ForceGraphNode; strength: number; label?: string }>,
-): string {
+): AgentResponseObject {
   const nrNumber = Number(node.id.replace('nr-', ''));
-  const title = node.label ?? nrLabel(nrNumber);
   const conns = neighbors.length;
-  const strongest = [...neighbors].sort((a, b) => b.strength - a.strength)[0];
+  const sorted = [...neighbors].sort((a, b) => b.strength - a.strength);
+  const strongest = sorted[0];
+  const next = sorted[1];
   const pct = strongest ? Math.round(strongest.strength * 100) : 0;
   const strongLine = strongest
-    ? `Correlação mais forte (${pct}%) com NR-${nrLabel(Number(strongest.node.id.replace('nr-', '')))}.`
+    ? `Conexão mais forte (${pct}%) com NR-${nrLabel(Number(strongest.node.id.replace('nr-', '')))}.`
     : 'Sem correlações registradas neste setor.';
   const bayes = Math.round((node.bayesianWeight ?? 0) * 100);
-  return `NR-${nrLabel(nrNumber)} — ${title}\n\n` +
-    `Conexões neste setor: ${conns}. ${strongLine} ` +
-    `Grupo: ${node.group}. Relevância setorial (peso a priori bayesiano): ${bayes}%.`;
+  const suggestionTarget = next ?? strongest;
+  const suggestion = suggestionTarget
+    ? `Tente apertar o nó da NR-${nrLabel(Number(suggestionTarget.node.id.replace('nr-', '')))} que te conto a importância dela.`
+    : '';
+  return {
+    text: `NR-${nrLabel(nrNumber)}.\n\n` +
+      `Conexões neste setor: ${conns}. ${strongLine} ` +
+      `Grupo: ${node.group}. Relevância setorial (peso a priori bayesiano): ${bayes}%.`,
+    suggestion,
+  };
 }
 
 export default function NRCorrelationGraph({ nrs, sectorName, onClose }: NRCorrelationGraphProps) {
+  const nrTitleById = useMemo(() => {
+    const m = new Map<number, string>();
+    nrs.forEach(n => m.set(n.id, n.title));
+    return m;
+  }, [nrs]);
+
   const { nodes, links } = useMemo(() => {
     const nrIds = new Set(nrs.map(n => n.id));
     const nodes: ForceGraphNode[] = nrs.map(n => ({
@@ -92,8 +108,11 @@ export default function NRCorrelationGraph({ nrs, sectorName, onClose }: NRCorre
   const agentFooter: AgentFooterConfig = useMemo(() => ({
     label: 'Ella',
     placeholder: 'Clique em um nó pra Ella analisar as correlações.',
-    onNodeSelect: async (node, neighbors) => ellaAnalysis(node, neighbors),
-  }), []);
+    ttsEndpoint: '/api/eduven/tts',
+    autoPlayAudio: true,
+    typewriterCps: 46,
+    onNodeSelect: async (node, neighbors) => callEllaAnalysis(node, neighbors, sectorName, nrTitleById),
+  }), [sectorName, nrTitleById]);
 
   return (
     <ForceGraph
@@ -107,4 +126,47 @@ export default function NRCorrelationGraph({ nrs, sectorName, onClose }: NRCorre
       agentFooter={agentFooter}
     />
   );
+}
+
+async function callEllaAnalysis(
+  node: ForceGraphNode,
+  neighbors: NeighborEntry[],
+  sectorName: string,
+  nrTitleById: Map<number, string>,
+): Promise<AgentResponseObject> {
+  const nrNumber = Number(node.id.replace('nr-', ''));
+  const title = nrTitleById.get(nrNumber) ?? `NR-${nrLabel(nrNumber)}`;
+  const payload = {
+    sectorName,
+    node: {
+      code: `NR-${nrLabel(nrNumber)}`,
+      title,
+      group: node.group,
+      relevance: Math.round((node.bayesianWeight ?? 0) * 5),
+    },
+    neighbors: neighbors.map(nb => {
+      const nNum = Number(nb.node.id.replace('nr-', ''));
+      return {
+        code: `NR-${nrLabel(nNum)}`,
+        title: nrTitleById.get(nNum) ?? '',
+        group: nb.node.group,
+        strength: nb.strength,
+        label: nb.label,
+      };
+    }),
+  };
+
+  try {
+    const res = await fetch('/api/eduven/graph-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    if (!data?.text) throw new Error('resposta sem text');
+    return { text: String(data.text), suggestion: data.suggestion ? String(data.suggestion) : '' };
+  } catch {
+    return fallbackEllaAnalysis(node, neighbors);
+  }
 }

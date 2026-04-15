@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import * as d3 from 'd3';
-import { X, Search, Plus, RotateCcw } from 'lucide-react';
+import { X, Search, Plus, RotateCcw, Volume2, Pause, Loader2, VolumeX, ArrowRight } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════════
    ForceGraph — componente generico force-directed com camada bayesiana
@@ -30,13 +30,28 @@ export interface CategoryStyle {
   text: string;
 }
 
+export interface AgentResponseObject {
+  text: string;
+  suggestion?: string;
+  /** Texto a ser enviado pro TTS. Default: text + (suggestion || ''). */
+  audioText?: string;
+}
+
+export type AgentResponse = string | AgentResponseObject;
+
 export interface AgentFooterConfig {
   label: string;
   placeholder?: string;
   onNodeSelect: (
     node: ForceGraphNode,
     neighbors: Array<{ node: ForceGraphNode; strength: number; label?: string }>
-  ) => Promise<string>;
+  ) => Promise<AgentResponse>;
+  /** Endpoint TTS (POST text → audio/mpeg blob). Se omitido, audio nao e ativado. */
+  ttsEndpoint?: string;
+  /** Toca audio automaticamente quando a resposta do agente termina. Default: true. */
+  autoPlayAudio?: boolean;
+  /** Velocidade do typewriter em chars/segundo. Default: 42. */
+  typewriterCps?: number;
 }
 
 export interface ForceGraphProps {
@@ -87,8 +102,16 @@ export default function ForceGraph({
   const [searchQuery, setSearchQuery] = useState('');
   const [chargeStrength, setChargeStrength] = useState(-200);
   const [linkDistance, setLinkDistance] = useState(80);
-  const [agentResponse, setAgentResponse] = useState('');
+  const [agentText, setAgentText] = useState('');
+  const [agentSuggestion, setAgentSuggestion] = useState('');
   const [agentLoading, setAgentLoading] = useState(false);
+  const [typedText, setTypedText] = useState('');
+  const [typedSuggestion, setTypedSuggestion] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'error'>('idle');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [addedCount, setAddedCount] = useState(0);
 
   const showLabels = nodesRef.current.length <= LABELS_HIDDEN_THRESHOLD;
@@ -113,10 +136,26 @@ export default function ForceGraph({
   useEffect(() => {
     if (!isOpen) {
       setSelectedId(null);
-      setAgentResponse('');
+      setAgentText(''); setAgentSuggestion('');
+      setTypedText(''); setTypedSuggestion('');
+      setIsTyping(false);
       setSearchQuery('');
+      stopAudio();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+    setAudioState('idle');
+  }, []);
 
   // ── (Re)inicializa dados originais quando props mudam ou reset ───
   const resetData = useCallback(() => {
@@ -124,7 +163,8 @@ export default function ForceGraph({
     linksRef.current = linksProp.map(cloneLink);
     setAddedCount(0);
     setSelectedId(null);
-    setAgentResponse('');
+    setAgentText(''); setAgentSuggestion('');
+    setTypedText(''); setTypedSuggestion('');
     setSearchQuery('');
     setNodesVersion(v => v + 1);
   }, [nodesProp, linksProp]);
@@ -145,12 +185,11 @@ export default function ForceGraph({
 
     svg.selectAll('*').remove();
 
-    // defs pra label background (rect branco)
-    const defs = svg.append('defs');
-    defs.append('filter').attr('id', 'label-bg').attr('x', '-10%').attr('y', '-10%').attr('width', '120%').attr('height', '120%');
-
     const g = svg.append('g');
     gRef.current = g.node();
+    // Comeca invisivel — nos e arestas aparecem juntos apos o primeiro tick,
+    // evitando a sensacao de "arestas entram antes dos nos".
+    g.attr('opacity', 0).style('transition', 'opacity 0.35s ease');
 
     // Zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -165,6 +204,16 @@ export default function ForceGraph({
     // Simulation
     const simNodes = nodesRef.current;
     const simLinks = linksRef.current;
+
+    // Posiciona nos ja centralizados numa espiral philotactica pra
+    // simulacao comecar proxima da posicao final — ninguem "entra" antes
+    // de outro, evitando o efeito de "arestas aparecendo antes dos nos".
+    const initR = 40;
+    simNodes.forEach((n, i) => {
+      if (n.x == null || Number.isNaN(n.x)) n.x = width / 2 + initR * Math.sqrt(0.5 + i) * Math.cos(i * 2.3998);
+      if (n.y == null || Number.isNaN(n.y)) n.y = height / 2 + initR * Math.sqrt(0.5 + i) * Math.sin(i * 2.3998);
+      n.vx = 0; n.vy = 0;
+    });
 
     const sim = d3.forceSimulation<SimNode>(simNodes)
       .force('link', d3.forceLink<SimNode, SimLink>(simLinks)
@@ -182,6 +231,14 @@ export default function ForceGraph({
     sim.on('end', () => {
       simNodes.forEach(n => { n.fx = n.x; n.fy = n.y; });
     });
+
+    // Reveal g depois que posicoes iniciais propagam pro DOM no primeiro tick
+    let revealed = false;
+    const reveal = () => {
+      if (revealed) return;
+      revealed = true;
+      requestAnimationFrame(() => g.attr('opacity', 1));
+    };
 
     // Link labels backgrounds (rect) + text
     const linkLayer = g.append('g').attr('class', 'link-layer');
@@ -276,6 +333,8 @@ export default function ForceGraph({
       });
 
       nodeG.attr('transform', d => `translate(${d.x},${d.y})`);
+
+      reveal();
     });
 
     return () => { sim.stop(); };
@@ -384,14 +443,109 @@ export default function ForceGraph({
     });
 
     let cancelled = false;
+    stopAudio();
     setAgentLoading(true);
-    setAgentResponse('');
+    setAgentText(''); setAgentSuggestion('');
+    setTypedText(''); setTypedSuggestion('');
+    setIsTyping(false);
     agentFooter.onNodeSelect(node, neighbors)
-      .then(r => { if (!cancelled) setAgentResponse(r); })
-      .catch(e => { if (!cancelled) setAgentResponse(`erro: ${(e as Error).message}`); })
+      .then(r => {
+        if (cancelled) return;
+        if (typeof r === 'string') {
+          setAgentText(r); setAgentSuggestion('');
+        } else {
+          setAgentText(r.text || '');
+          setAgentSuggestion(r.suggestion || '');
+        }
+      })
+      .catch(e => { if (!cancelled) { setAgentText(`erro: ${(e as Error).message}`); setAgentSuggestion(''); } })
       .finally(() => { if (!cancelled) setAgentLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedId, agentFooter]);
+  }, [selectedId, agentFooter, stopAudio]);
+
+  // ── Typewriter: digita text e depois suggestion ──────────────────
+  useEffect(() => {
+    if (typingTimerRef.current) {
+      clearInterval(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    if (!agentText) { setTypedText(''); setTypedSuggestion(''); setIsTyping(false); return; }
+    const cps = Math.max(10, agentFooter?.typewriterCps ?? 42);
+    const intervalMs = Math.max(6, Math.floor(1000 / cps));
+    const full = agentText;
+    const suggestionFull = agentSuggestion;
+    let i = 0;
+    let phase: 'text' | 'pause' | 'suggestion' | 'done' = 'text';
+    let pauseTicks = 0;
+    setTypedText(''); setTypedSuggestion(''); setIsTyping(true);
+    typingTimerRef.current = setInterval(() => {
+      if (phase === 'text') {
+        i++;
+        setTypedText(full.slice(0, i));
+        if (i >= full.length) {
+          phase = suggestionFull ? 'pause' : 'done';
+          pauseTicks = 0; i = 0;
+        }
+      } else if (phase === 'pause') {
+        pauseTicks++;
+        if (pauseTicks > 25) phase = 'suggestion';
+      } else if (phase === 'suggestion') {
+        i++;
+        setTypedSuggestion(suggestionFull.slice(0, i));
+        if (i >= suggestionFull.length) phase = 'done';
+      }
+      if (phase === 'done') {
+        if (typingTimerRef.current) { clearInterval(typingTimerRef.current); typingTimerRef.current = null; }
+        setIsTyping(false);
+      }
+    }, intervalMs);
+    return () => {
+      if (typingTimerRef.current) { clearInterval(typingTimerRef.current); typingTimerRef.current = null; }
+    };
+  }, [agentText, agentSuggestion, agentFooter?.typewriterCps]);
+
+  // ── Audio: carrega TTS quando resposta chega ────────────────────
+  useEffect(() => {
+    if (!agentText || !agentFooter?.ttsEndpoint) return;
+    const autoplay = agentFooter.autoPlayAudio !== false;
+    const endpoint = agentFooter.ttsEndpoint;
+    const audioText = (agentText + (agentSuggestion ? `\n\n${agentSuggestion}` : '')).trim();
+    if (!audioText) return;
+
+    let cancelled = false;
+    stopAudio();
+    setAudioState('loading');
+
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: audioText, voice: 'nova' }),
+    })
+      .then(r => r.ok ? r.blob() : Promise.reject(new Error(`tts ${r.status}`)))
+      .then(blob => {
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        audioUrlRef.current = url;
+        const a = new Audio(url);
+        audioRef.current = a;
+        a.onended = () => { setAudioState('idle'); };
+        a.onerror = () => { setAudioState('error'); };
+        a.onplay = () => setAudioState('playing');
+        a.onpause = () => { if (!a.ended) setAudioState('idle'); };
+        if (autoplay) a.play().catch(() => setAudioState('idle'));
+        else setAudioState('idle');
+      })
+      .catch(() => { if (!cancelled) setAudioState('error'); });
+
+    return () => { cancelled = true; };
+  }, [agentText, agentSuggestion, agentFooter?.ttsEndpoint, agentFooter?.autoPlayAudio, stopAudio]);
+
+  const toggleAudio = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (audioState === 'playing') a.pause();
+    else a.play().catch(() => setAudioState('error'));
+  };
 
   // ── Zoom controls ────────────────────────────────────────────────
   const zoomBy = (factor: number) => {
@@ -440,7 +594,13 @@ export default function ForceGraph({
   if (!isOpen) return null;
 
   const agentInitial = agentFooter?.label?.charAt(0).toUpperCase() ?? '?';
-  const displayAgentMsg = agentResponse || agentFooter?.placeholder || 'Clique em um no para analisar.';
+  const hasResponse = agentText.length > 0;
+  const displayPlaceholder = agentFooter?.placeholder || 'Clique em um nó para analisar.';
+  const AudioIcon = audioState === 'loading' ? Loader2
+    : audioState === 'playing' ? Pause
+    : audioState === 'error' ? VolumeX
+    : Volume2;
+  const audioEnabled = !!agentFooter?.ttsEndpoint;
 
   return (
     <div
@@ -581,16 +741,62 @@ export default function ForceGraph({
               color: '#050d1a', fontWeight: 800, fontSize: 14,
             }}>{agentInitial}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: '#22d3ee', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
-                {agentFooter.label}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ color: '#22d3ee', fontWeight: 700, fontSize: 13 }}>{agentFooter.label}</span>
+                {audioEnabled && hasResponse && (
+                  <button
+                    onClick={toggleAudio}
+                    disabled={audioState === 'loading' || audioState === 'error'}
+                    aria-label={audioState === 'playing' ? 'Pausar audio' : 'Ouvir audio'}
+                    title={audioState === 'error' ? 'TTS indisponivel'
+                      : audioState === 'playing' ? 'Pausar'
+                      : audioState === 'loading' ? 'Carregando audio...'
+                      : 'Ouvir em voz alta'}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 24, height: 24, borderRadius: '50%',
+                      border: `1.5px solid ${audioState === 'playing' ? '#ec4899'
+                        : audioState === 'error' ? 'rgba(100,116,139,0.4)' : '#fbbf24'}`,
+                      background: audioState === 'playing'
+                        ? 'linear-gradient(135deg, rgba(236,72,153,0.25), rgba(168,85,247,0.15))'
+                        : audioState === 'error'
+                        ? 'rgba(100,116,139,0.1)'
+                        : 'linear-gradient(135deg, rgba(251,191,36,0.18), rgba(236,72,153,0.10))',
+                      color: audioState === 'playing' ? '#ec4899'
+                        : audioState === 'error' ? '#64748b' : '#fbbf24',
+                      cursor: audioState === 'error' ? 'not-allowed' : 'pointer',
+                      padding: 0, flexShrink: 0,
+                    }}
+                  >
+                    <AudioIcon size={12} style={audioState === 'loading' ? { animation: 'spin 1s linear infinite' } : undefined} />
+                  </button>
+                )}
               </div>
-              {agentLoading ? (
+              {agentLoading && !hasResponse ? (
                 <LoadingDots />
               ) : (
-                <div style={{
-                  color: 'var(--color-text-primary, #cbd5e1)',
-                  fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap',
-                }}>{displayAgentMsg}</div>
+                <>
+                  <div style={{
+                    color: 'var(--color-text-primary, #cbd5e1)',
+                    fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap',
+                  }}>
+                    {typedText || (hasResponse ? '' : displayPlaceholder)}
+                    {isTyping && typedSuggestion.length === 0 && <span className="fg-caret">▍</span>}
+                  </div>
+                  {(typedSuggestion || (!isTyping && agentSuggestion)) && (
+                    <div style={{
+                      marginTop: 10, display: 'flex', alignItems: 'flex-start', gap: 6,
+                      padding: '6px 10px',
+                      background: 'rgba(34,211,238,0.08)',
+                      border: '1px solid rgba(34,211,238,0.3)',
+                      borderRadius: 8, fontSize: 12,
+                      color: '#22d3ee',
+                    }}>
+                      <ArrowRight size={13} style={{ marginTop: 2, flexShrink: 0 }} />
+                      <span>{typedSuggestion || agentSuggestion}{isTyping && typedSuggestion.length < agentSuggestion.length && <span className="fg-caret">▍</span>}</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -599,6 +805,9 @@ export default function ForceGraph({
 
       <style>{`
         @keyframes fg-dot { 0%, 100% { opacity: 0.3 } 50% { opacity: 1 } }
+        @keyframes fg-caret { 0%, 50% { opacity: 1 } 51%, 100% { opacity: 0 } }
+        .fg-caret { display: inline-block; margin-left: 1px; color: #22d3ee;
+          font-weight: 700; animation: fg-caret 0.9s steps(1) infinite; }
       `}</style>
     </div>
   );

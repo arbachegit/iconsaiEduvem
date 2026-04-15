@@ -300,7 +300,54 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
   const fullTutorText = [tutorText, tutorDetail, tutorWarning, tutorSuggestion].filter(Boolean).join(' ')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
+
+      {/* ═══ MODAL OPACO SOBRE O BONECO ═══ */}
+      {showOnboarding && selected.size === 0 && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 20,
+          background: 'rgba(5,10,20,0.88)',
+          borderRadius: 8,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 8,
+        }}>
+          {/* X em quadrado */}
+          <button
+            onClick={() => setShowOnboarding(false)}
+            style={{
+              position: 'absolute', top: 8, right: 8,
+              width: 28, height: 28, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', pointerEvents: 'auto',
+              background: 'rgba(255,255,255,0.08)',
+              border: '1.5px solid rgba(255,255,255,0.25)',
+              borderRadius: 6, color: '#e2e8f0', cursor: 'pointer',
+              fontSize: 16, fontWeight: 700, fontFamily: 'inherit', lineHeight: 1,
+            }}
+          >
+            ✕
+          </button>
+
+          {/* Texto handwriter */}
+          <div style={{
+            fontFamily: "'Caveat', 'Segoe Script', 'Comic Sans MS', cursive",
+            fontSize: isMobile ? 18 : 22, color: '#ffffff',
+            fontWeight: 600, textAlign: 'center', lineHeight: 1.3,
+          }}>
+            Escolha uma EPI para<br/>ver o que ocorrerá
+          </div>
+
+          {/* Seta handwriter branca — curva orgânica, contínua, apontando para baixo */}
+          <svg width="50" height="60" viewBox="0 0 50 60" fill="none">
+            <path
+              d="M 25 2 C 15 8 12 18 16 30 C 20 42 24 48 25 54"
+              stroke="#ffffff" strokeWidth="2.2" fill="none" strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path d="M 20 49 L 25 57 L 30 49" stroke="#ffffff" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      )}
       {/* Título + PCMAT */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -385,49 +432,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
           )
         })}
 
-        {/* Overlay transparente de onboarding */}
-        {showOnboarding && selected.size === 0 && (
-          <div style={{
-            position: 'absolute', inset: -8, zIndex: 10,
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', pointerEvents: 'none',
-          }}>
-            {/* X para fechar */}
-            <button
-              onClick={() => setShowOnboarding(false)}
-              style={{
-                position: 'absolute', top: 0, right: 0, zIndex: 11,
-                width: 24, height: 24, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', pointerEvents: 'auto',
-                background: 'none', border: `1.5px solid #64748b`,
-                borderRadius: 4, color: '#94a3b8', cursor: 'pointer',
-                fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
-                lineHeight: 1,
-              }}
-            >
-              ✕
-            </button>
-
-            {/* Texto typewriter */}
-            <div style={{
-              fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-              fontSize: isMobile ? 11 : 13, color: '#e2e8f0',
-              fontWeight: 600, textAlign: 'center', lineHeight: 1.4,
-              textShadow: '0 1px 8px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.6)',
-            }}>
-              Escolha uma EPI para<br/>ver o que ocorrerá
-            </div>
-
-            {/* Seta mão livre — curva orgânica, contínua */}
-            <svg width="60" height="40" viewBox="0 0 60 40" fill="none" style={{ marginTop: 4 }}>
-              <path
-                d="M 30 2 C 22 4 16 10 18 18 C 20 26 28 30 30 36"
-                stroke="#22d3ee" strokeWidth="2" fill="none" strokeLinecap="round"
-              />
-              <path d="M 26 32 L 30 38 L 34 32" stroke="#22d3ee" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-        )}
+        {/* overlay movido para position absolute sobre todo o lab */}
       </div>
 
       {/* overlay antigo removido */}
