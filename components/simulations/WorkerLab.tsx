@@ -4,7 +4,8 @@ import { useState, useMemo, useCallback } from 'react'
 import { Bot, AlertTriangle, ShieldCheck, Heart } from 'lucide-react'
 import PlayButton from '../education/PlayButton'
 import WorkerSVG, { type WorkerProps, type WorkerRisks } from './WorkerSVG'
-import { EpiIcon, type EpiType } from './EpiIcons'
+import { EpiIcon, EPI_LABELS, type EpiType } from './EpiIcons'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { trackEvent } from '@/lib/track-event'
 
 /* ═══════════════════════════════════════════════════════════
@@ -155,6 +156,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
   }
   const baseRisks = config.baseRisks || config.levels?.[0]?.worker?.risks || { headImpact: true, handCuts: true, fallRisk: true }
 
+  const isMobile = useIsMobile()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [lastAction, setLastAction] = useState<{ id: string; added: boolean } | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(true)
@@ -344,73 +346,91 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
         />
       </div>
 
-      {/* Botões EPI — horizontal, ícones only, full width */}
+      {/* Botões EPI — ícone + label, horizontal wrap */}
       <div className="worker-lab-controls" style={{
         display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center',
-        padding: '4px 0',
+        padding: '4px 0', position: 'relative',
       }}>
         {items.map(item => {
           const isActive = selected.has(item.id)
-          const itemColor = isActive ? ACCENT : '#475569'
+          const itemColor = isActive ? ACCENT : '#64748b'
+          const label = EPI_LABELS[item.id as EpiType] || item.label
           return (
             <button
               key={item.id}
               onClick={() => toggle(item.id)}
               title={item.fullName || item.label}
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 38, height: 38, borderRadius: 8,
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 2,
+                width: isMobile ? 52 : 64, padding: '6px 2px', borderRadius: 8,
                 border: `2px solid ${isActive ? ACCENT : '#1e293b'}`,
                 background: isActive ? `${ACCENT}15` : '#080c14',
-                cursor: 'pointer', opacity: isActive ? 1 : 0.45,
-                transition: 'all 0.15s', padding: 0,
+                cursor: 'pointer', opacity: isActive ? 1 : 0.5,
+                transition: 'all 0.15s',
                 boxShadow: isActive ? `0 0 8px ${ACCENT}33` : 'none',
+                fontFamily: 'inherit',
               }}
             >
-              <EpiIcon type={item.id} color={itemColor} size={20} />
+              <EpiIcon type={item.id} color={itemColor} size={isMobile ? 20 : 24} />
+              <span style={{
+                fontSize: isMobile ? 7 : 9, color: isActive ? '#e2e8f0' : '#64748b',
+                fontWeight: 600, lineHeight: 1, textAlign: 'center',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                width: '100%',
+              }}>
+                {label}
+              </span>
             </button>
           )
         })}
+
+        {/* Overlay transparente de onboarding */}
+        {showOnboarding && selected.size === 0 && (
+          <div style={{
+            position: 'absolute', inset: -8, zIndex: 10,
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', pointerEvents: 'none',
+          }}>
+            {/* X para fechar */}
+            <button
+              onClick={() => setShowOnboarding(false)}
+              style={{
+                position: 'absolute', top: 0, right: 0, zIndex: 11,
+                width: 24, height: 24, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', pointerEvents: 'auto',
+                background: 'none', border: `1.5px solid #64748b`,
+                borderRadius: 4, color: '#94a3b8', cursor: 'pointer',
+                fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+
+            {/* Texto typewriter */}
+            <div style={{
+              fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+              fontSize: isMobile ? 11 : 13, color: '#e2e8f0',
+              fontWeight: 600, textAlign: 'center', lineHeight: 1.4,
+              textShadow: '0 1px 8px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.6)',
+            }}>
+              Escolha uma EPI para<br/>ver o que ocorrerá
+            </div>
+
+            {/* Seta mão livre — curva orgânica, contínua */}
+            <svg width="60" height="40" viewBox="0 0 60 40" fill="none" style={{ marginTop: 4 }}>
+              <path
+                d="M 30 2 C 22 4 16 10 18 18 C 20 26 28 30 30 36"
+                stroke="#22d3ee" strokeWidth="2" fill="none" strokeLinecap="round"
+              />
+              <path d="M 26 32 L 30 38 L 34 32" stroke="#22d3ee" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        )}
       </div>
 
-      {/* Onboarding overlay — appears when no EPI selected */}
-      {showOnboarding && selected.size === 0 && (
-        <div style={{
-          position: 'relative', marginTop: -4, marginBottom: 4,
-          background: 'rgba(5,13,26,0.85)', borderRadius: 10,
-          padding: '24px 16px 20px', textAlign: 'center',
-          border: '1px solid rgba(34,211,238,0.2)',
-        }}>
-          {/* Close button */}
-          <button
-            onClick={() => setShowOnboarding(false)}
-            style={{
-              position: 'absolute', top: 6, right: 8,
-              background: 'none', border: 'none', color: '#64748b',
-              fontSize: 18, cursor: 'pointer', fontFamily: 'inherit',
-              lineHeight: 1, padding: '2px 6px',
-            }}
-            aria-label="Fechar"
-          >
-            &times;
-          </button>
-          {/* Hand-drawn swoopy arrow pointing down */}
-          <svg width="60" height="50" viewBox="0 0 60 50" fill="none" style={{ margin: '0 auto 8px', display: 'block' }}>
-            <path
-              d="M 30 4 Q 10 6 8 20 Q 6 34 22 38 Q 32 40 30 46"
-              stroke="#22d3ee" strokeWidth="2" fill="none" strokeLinecap="round"
-              strokeDasharray="4 3"
-            />
-            {/* Arrowhead */}
-            <path d="M 26 42 L 30 48 L 34 42" stroke="#22d3ee" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <div style={{
-            color: '#e2e8f0', fontSize: 14, fontWeight: 600, lineHeight: 1.4,
-          }}>
-            Escolha uma EPI para ver o que ocorrer&aacute;
-          </div>
-        </div>
-      )}
+      {/* overlay antigo removido */}
 
       {/* Stat Cards — grid 2 colunas, compacto */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
