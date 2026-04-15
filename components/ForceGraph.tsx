@@ -488,7 +488,7 @@ export default function ForceGraph({
         }
       } else if (phase === 'pause') {
         pauseTicks++;
-        if (pauseTicks > 25) phase = 'suggestion';
+        if (pauseTicks > 12) phase = 'suggestion';
       } else if (phase === 'suggestion') {
         i++;
         setTypedSuggestion(suggestionFull.slice(0, i));
