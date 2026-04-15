@@ -101,80 +101,69 @@ function NoneIcon({ color, size = 24 }: IconProps) {
 
 function GlovesIcon({ color, size = 24 }: IconProps) {
   return <V size={size}>
-    {/* Punho */}
-    <rect x="6" y="16" width="12" height="5" rx="1.5" stroke={color} strokeWidth="1.8" fill={`${color}22`}/>
-    {/* Palma */}
-    <path d="M6 16V9c0-1 .8-1.8 1.8-1.8h8.4c1 0 1.8.8 1.8 1.8v7" stroke={color} strokeWidth="1.8" fill={`${color}15`}/>
-    {/* Dedos — 4 arredondados */}
-    <path d="M8 7.2V4.5a1.2 1.2 0 012.4 0" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
-    <path d="M10.4 7.2V3.5a1.2 1.2 0 012.4 0" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
-    <path d="M12.8 7.2V3.8a1.2 1.2 0 012.4 0" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
-    <path d="M15.2 7.2V5a1.2 1.2 0 012.4 0V7.2" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
-    {/* Polegar */}
-    <path d="M6 12L3.5 10a1.2 1.2 0 011.7-1.7L6 9.5" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
+    {/* Mão aberta com 5 dedos — silhueta de luva industrial */}
+    <path d="M9 21h6v-6h2V9a1 1 0 00-2 0V7a1 1 0 00-2 0V5a1 1 0 00-2 0v2a1 1 0 00-2 0v5l-2-2a1.4 1.4 0 00-2 2l3 4v5z"
+      fill={`${color}30`} stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+    {/* Punho reforçado */}
+    <rect x="8.5" y="20" width="7" height="3" rx="1" fill={`${color}40`} stroke={color} strokeWidth="1.5"/>
   </V>
 }
 
 function BootsIcon({ color, size = 24 }: IconProps) {
   return <V size={size}>
-    {/* Cano */}
-    <path d="M8 3v11H6V3h2z" stroke={color} strokeWidth="1.5" fill={`${color}15`} strokeLinejoin="round"/>
-    {/* Corpo + biqueira */}
-    <path d="M6 14v5h-2c-.6 0-1 .4-1 1v1h16v-1c0-.6-.4-1-1-1h-1v-2c0-2-1.5-3-4-3H8" stroke={color} strokeWidth="1.5" fill={`${color}22`} strokeLinejoin="round"/>
+    {/* Bota de segurança — perfil lateral, forma clara */}
+    <path d="M7 4h4v10h6l2 3v2H3v-2l2-3V8c0-2.2 1-4 2-4z"
+      fill={`${color}25`} stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
     {/* Sola grossa */}
-    <rect x="3" y="21" width="16" height="2" rx="1" fill={color} opacity="0.8"/>
-    {/* Biqueira reforçada */}
-    <path d="M14 17c2 0 3 .5 3 2" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+    <rect x="2.5" y="19" width="17" height="3" rx="1.5" fill={color} opacity="0.7"/>
+    {/* Biqueira de aço */}
+    <path d="M15 14h4l2 3v2h-4" stroke={color} strokeWidth="2.5" strokeLinecap="round" opacity="0.5"/>
   </V>
 }
 
 function HarnessIcon({ color, size = 24 }: IconProps) {
   return <V size={size}>
-    {/* Alças em X */}
-    <path d="M7 3l5 8 5-8" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M12 11l-5 8M12 11l5 8" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    {/* Cinto na cintura */}
-    <path d="M5 14h14" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    {/* D-ring central */}
-    <circle cx="12" cy="8" r="2.5" stroke={color} strokeWidth="1.8" fill={`${color}33`}/>
-    <circle cx="12" cy="8" r="1" fill={color}/>
-    {/* Pernas */}
-    <path d="M7 19l-1 3M17 19l1 3" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Corpo humano simplificado com arnês */}
+    <circle cx="12" cy="4" r="2.5" stroke={color} strokeWidth="2"/>
+    {/* Alças do arnês — V no peito */}
+    <path d="M8 8l4 6 4-6" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Cinto */}
+    <rect x="6" y="13" width="12" height="2.5" rx="1" fill={`${color}40`} stroke={color} strokeWidth="1.8"/>
+    {/* D-ring no peito */}
+    <circle cx="12" cy="10.5" r="1.8" fill={color} opacity="0.7"/>
+    {/* Pernas do arnês */}
+    <path d="M8 15.5v4M16 15.5v4" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <path d="M7 19.5h3M14 19.5h3" stroke={color} strokeWidth="2" strokeLinecap="round"/>
   </V>
 }
 
 function MaskIcon({ color, size = 24 }: IconProps) {
   return <V size={size}>
-    {/* Face da máscara — meia face */}
-    <path d="M5 9c0-1 1.5-3 7-3s7 2 7 3v4c0 3-3 6-7 6s-7-3-7-6V9z" stroke={color} strokeWidth="1.8" fill={`${color}22`}/>
-    {/* Filtros laterais — dois cilindros */}
-    <ellipse cx="4" cy="11" rx="2.5" ry="3" stroke={color} strokeWidth="1.5" fill={`${color}33`}/>
-    <ellipse cx="20" cy="11" rx="2.5" ry="3" stroke={color} strokeWidth="1.5" fill={`${color}33`}/>
-    {/* Grades dos filtros */}
-    <line x1="3" y1="10" x2="5" y2="10" stroke={color} strokeWidth="0.8" opacity="0.6"/>
-    <line x1="3" y1="11.5" x2="5" y2="11.5" stroke={color} strokeWidth="0.8" opacity="0.6"/>
-    <line x1="19" y1="10" x2="21" y2="10" stroke={color} strokeWidth="0.8" opacity="0.6"/>
-    <line x1="19" y1="11.5" x2="21" y2="11.5" stroke={color} strokeWidth="0.8" opacity="0.6"/>
-    {/* Válvula de exalação */}
-    <circle cx="12" cy="14" r="1.5" stroke={color} strokeWidth="1.2" fill={`${color}22`}/>
-    {/* Tiras */}
-    <path d="M5 9L2 7" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M19 9L22 7" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Máscara meia-face — frontal, forma clara de respirador */}
+    <path d="M4 10c0-2 3.5-5 8-5s8 3 8 5v3c0 4-3.5 7-8 7s-8-3-8-7v-3z"
+      fill={`${color}25`} stroke={color} strokeWidth="2" strokeLinejoin="round"/>
+    {/* Dois filtros redondos laterais */}
+    <circle cx="3" cy="12" r="2.5" fill={`${color}40`} stroke={color} strokeWidth="2"/>
+    <circle cx="21" cy="12" r="2.5" fill={`${color}40`} stroke={color} strokeWidth="2"/>
+    {/* Válvula central */}
+    <circle cx="12" cy="14" r="2" fill={`${color}50`} stroke={color} strokeWidth="1.5"/>
+    {/* Elásticos */}
+    <path d="M4 10L1 8M20 10l3-2" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
   </V>
 }
 
 function ApronIcon({ color, size = 24 }: IconProps) {
   return <V size={size}>
-    {/* Alça do pescoço */}
-    <path d="M8 3C8 1.5 16 1.5 16 3" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round"/>
-    {/* Corpo do avental */}
-    <path d="M7 5h10v14c0 1-.5 2-2 2H9c-1.5 0-2-1-2-2V5z" stroke={color} strokeWidth="1.8" fill={`${color}22`}/>
-    {/* Alças laterais */}
-    <path d="M7 10L3 11" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M17 10L21 11" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M3 11L3 13L7 14" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    <path d="M21 11L21 13L17 14" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    {/* Bolso */}
-    <rect x="9" y="12" width="6" height="4" rx="0.5" stroke={color} strokeWidth="1" opacity="0.5"/>
+    {/* Avental — forma de trapézio com alça */}
+    <path d="M9 2c0 0 1.5-1 3-1s3 1 3 1" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    <path d="M9 2v1h6V2" stroke={color} strokeWidth="1.5"/>
+    {/* Corpo do avental — trapézio */}
+    <path d="M6 5h12v14c0 1.5-1 3-3 3H9c-2 0-3-1.5-3-3V5z"
+      fill={`${color}25`} stroke={color} strokeWidth="2" strokeLinejoin="round"/>
+    {/* Amarras na cintura */}
+    <path d="M6 11L2 12.5" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    <path d="M18 11l4 1.5" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    {/* Bolso grande */}
+    <rect x="8" y="13" width="8" height="5" rx="1" stroke={color} strokeWidth="1.5" fill={`${color}15`}/>
   </V>
 }

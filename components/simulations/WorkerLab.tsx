@@ -351,7 +351,8 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
             position: 'absolute', inset: 0, zIndex: 10,
             background: 'rgba(5,10,20,0.88)', borderRadius: 6,
             display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 6,
+            alignItems: 'center', justifyContent: 'center',
+            paddingBottom: 8,
           }}>
             <button
               onClick={() => setShowOnboarding(false)}
@@ -367,14 +368,16 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
             >✕</button>
             <div style={{
               fontFamily: "'Caveat', cursive",
-              fontSize: isMobile ? 18 : 24, color: '#fff',
-              fontWeight: 600, textAlign: 'center', lineHeight: 1.3,
+              fontSize: isMobile ? 22 : 28, color: '#fff',
+              fontWeight: 700, textAlign: 'center', lineHeight: 1.3,
+              flex: 1, display: 'flex', alignItems: 'center',
             }}>
-              Escolha uma EPI para<br/>ver o que ocorrerá
+              <span>Escolha uma EPI para<br/>ver o que ocorrerá</span>
             </div>
-            <svg width="40" height="50" viewBox="0 0 40 50" fill="none">
-              <path d="M 20 2 C 12 8 10 18 14 28 C 18 38 19 42 20 46" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M 16 42 L 20 48 L 24 42" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            {/* Seta colada na borda inferior — próxima aos botões */}
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style={{ flexShrink: 0 }}>
+              <path d="M 18 2 C 10 6 9 14 13 22 C 16 28 17 30 18 33" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M 14 29 L 18 35 L 22 29" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
         )}
@@ -408,7 +411,7 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
             >
               <EpiIcon type={item.id} color={itemColor} size={isMobile ? 20 : 24} />
               <span style={{
-                fontSize: isMobile ? 7 : 9, color: isActive ? '#e2e8f0' : '#64748b',
+                fontSize: isMobile ? 9 : 10, color: isActive ? '#e2e8f0' : '#64748b',
                 fontWeight: 600, lineHeight: 1, textAlign: 'center',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 width: '100%',
