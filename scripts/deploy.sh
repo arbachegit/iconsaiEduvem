@@ -67,6 +67,9 @@ echo "▶ rsync public"
 rsync -avz -e "$RSH" --partial --partial-dir=.rsync-partial --timeout=180 \
   public/ "$DROPLET:$APP_PATH/public/" | tail -3
 
+echo "▶ rsync start.sh (entrypoint do systemd)"
+rsync -avz -e "$RSH" --timeout=60 start.sh "$DROPLET:$APP_PATH/start.sh" | tail -2
+
 echo "▶ restart $SERVICE"
 ssh -o ServerAliveInterval=10 -o ConnectTimeout=20 "$DROPLET" "
   chown -R www-data:www-data $APP_PATH
