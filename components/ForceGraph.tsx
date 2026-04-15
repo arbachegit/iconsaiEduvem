@@ -899,19 +899,20 @@ export default function ForceGraph({
               </div>
             </div>
 
-            {/* Scroll hint — botao branco com chevron preto, bob vertical */}
+            {/* Scroll hint — botao branco centralizado horizontalmente, proximo a borda inferior */}
             {showScrollHint && (
               <button
                 onClick={scrollAgentToBottom}
                 aria-label="Rolar para ver mais"
                 title="Há mais conteúdo — clique para rolar"
                 style={{
-                  position: 'absolute', right: 14, bottom: 10,
-                  width: 28, height: 28, borderRadius: '50%',
+                  position: 'absolute', left: '50%', bottom: 8,
+                  transform: 'translateX(-50%)',
+                  width: 30, height: 30, borderRadius: '50%',
                   background: '#ffffff', color: '#0c1220',
                   border: 'none', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.05)',
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.08)',
                   animation: 'fg-scroll-bob 1.4s ease-in-out infinite',
                   zIndex: 2,
                   padding: 0,
@@ -930,8 +931,8 @@ export default function ForceGraph({
         .fg-caret { display: inline-block; margin-left: 1px; color: #22d3ee;
           font-weight: 700; animation: fg-caret 0.9s steps(1) infinite; }
         @keyframes fg-scroll-bob {
-          0%, 100% { transform: translateY(0); box-shadow: 0 4px 14px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.05); }
-          50% { transform: translateY(4px); box-shadow: 0 2px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.05); }
+          0%, 100% { transform: translateX(-50%) translateY(0); box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.08); }
+          50%      { transform: translateX(-50%) translateY(4px); box-shadow: 0 3px 14px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.08); }
         }
       `}</style>
     </div>
