@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import * as d3 from 'd3';
-import { X, Search, Plus, RotateCcw, Volume2, Pause, Loader2, VolumeX, ArrowRight } from 'lucide-react';
+import { X, Search, Plus, RotateCcw, Volume2, Pause, Loader2, VolumeX, ArrowRight, ChevronDown } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════════
    ForceGraph — componente generico force-directed com camada bayesiana
@@ -33,6 +33,8 @@ export interface CategoryStyle {
 export interface AgentResponseObject {
   text: string;
   suggestion?: string;
+  /** Id do no que deve ser selecionado quando o usuario clicar na sugestao. */
+  suggestionTarget?: string;
   /** Texto a ser enviado pro TTS. Default: text + (suggestion || ''). */
   audioText?: string;
 }
@@ -104,6 +106,7 @@ export default function ForceGraph({
   const [linkDistance, setLinkDistance] = useState(80);
   const [agentText, setAgentText] = useState('');
   const [agentSuggestion, setAgentSuggestion] = useState('');
+  const [agentSuggestionTarget, setAgentSuggestionTarget] = useState<string | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
   const [typedText, setTypedText] = useState('');
   const [typedSuggestion, setTypedSuggestion] = useState('');
@@ -187,9 +190,6 @@ export default function ForceGraph({
 
     const g = svg.append('g');
     gRef.current = g.node();
-    // Comeca invisivel — nos e arestas aparecem juntos apos o primeiro tick,
-    // evitando a sensacao de "arestas entram antes dos nos".
-    g.attr('opacity', 0).style('transition', 'opacity 0.35s ease');
 
     // Zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -232,17 +232,49 @@ export default function ForceGraph({
       simNodes.forEach(n => { n.fx = n.x; n.fy = n.y; });
     });
 
-    // Reveal g depois que posicoes iniciais propagam pro DOM no primeiro tick
-    let revealed = false;
-    const reveal = () => {
-      if (revealed) return;
-      revealed = true;
-      requestAnimationFrame(() => g.attr('opacity', 1));
-    };
-
-    // Link labels backgrounds (rect) + text
+    // CANON (determinístico): nós entram PRIMEIRO, arestas entram DEPOIS com animação.
+    // É proibido renderizar arestas antes dos nós estarem visíveis.
+    // Ordem de append (z-order): linkLayer abaixo, nodeLayer acima.
     const linkLayer = g.append('g').attr('class', 'link-layer');
     const nodeLayer = g.append('g').attr('class', 'node-layer');
+    linkLayer.attr('opacity', 0).style('transition', 'opacity 0.55s ease');
+    nodeLayer.attr('opacity', 0).style('transition', 'opacity 0.4s ease');
+
+    const EDGE_DELAY_MS = 650;  // atraso entre entrada dos nós e entrada das arestas
+
+    let revealedNodes = false;
+    let revealedLinks = false;
+    const revealNodesFirst = () => {
+      if (revealedNodes) return;
+      revealedNodes = true;
+      requestAnimationFrame(() => {
+        nodeLayer.attr('opacity', 1);
+        // Schedule link reveal — nós precisam estar visíveis antes.
+        setTimeout(() => {
+          if (revealedLinks) return;
+          revealedLinks = true;
+          linkLayer.attr('opacity', 1);
+          // Animação de "desenho" em cada linha — stroke-dasharray decrescente.
+          linkLayer.selectAll<SVGLineElement, SimLink>('line.link').each(function() {
+            const el = this as SVGLineElement;
+            let len = 0;
+            try { len = el.getTotalLength(); } catch { len = 200; }
+            el.style.transition = 'none';
+            el.setAttribute('stroke-dasharray', String(len));
+            el.setAttribute('stroke-dashoffset', String(len));
+            // Force reflow
+            void el.getBoundingClientRect();
+            el.style.transition = 'stroke-dashoffset 0.7s ease-out';
+            el.setAttribute('stroke-dashoffset', '0');
+            setTimeout(() => {
+              el.style.transition = '';
+              el.removeAttribute('stroke-dasharray');
+              el.removeAttribute('stroke-dashoffset');
+            }, 900);
+          });
+        }, EDGE_DELAY_MS);
+      });
+    };
 
     const linkSel = linkLayer.selectAll<SVGLineElement, SimLink>('line.link')
       .data(simLinks).enter().append('line')
@@ -334,7 +366,7 @@ export default function ForceGraph({
 
       nodeG.attr('transform', d => `translate(${d.x},${d.y})`);
 
-      reveal();
+      revealNodesFirst();
     });
 
     return () => { sim.stop(); };
@@ -445,23 +477,35 @@ export default function ForceGraph({
     let cancelled = false;
     stopAudio();
     setAgentLoading(true);
-    setAgentText(''); setAgentSuggestion('');
+    setAgentText(''); setAgentSuggestion(''); setAgentSuggestionTarget(null);
     setTypedText(''); setTypedSuggestion('');
     setIsTyping(false);
     agentFooter.onNodeSelect(node, neighbors)
       .then(r => {
         if (cancelled) return;
         if (typeof r === 'string') {
-          setAgentText(r); setAgentSuggestion('');
+          setAgentText(r); setAgentSuggestion(''); setAgentSuggestionTarget(null);
         } else {
           setAgentText(r.text || '');
           setAgentSuggestion(r.suggestion || '');
+          setAgentSuggestionTarget(r.suggestionTarget ?? null);
         }
       })
-      .catch(e => { if (!cancelled) { setAgentText(`erro: ${(e as Error).message}`); setAgentSuggestion(''); } })
+      .catch(e => {
+        if (!cancelled) {
+          setAgentText(`erro: ${(e as Error).message}`);
+          setAgentSuggestion(''); setAgentSuggestionTarget(null);
+        }
+      })
       .finally(() => { if (!cancelled) setAgentLoading(false); });
     return () => { cancelled = true; };
   }, [selectedId, agentFooter, stopAudio]);
+
+  const handleSuggestionClick = useCallback(() => {
+    if (!agentSuggestionTarget) return;
+    const exists = nodesRef.current.some(n => n.id === agentSuggestionTarget);
+    if (exists) setSelectedId(agentSuggestionTarget);
+  }, [agentSuggestionTarget]);
 
   // ── Typewriter: digita text e depois suggestion ──────────────────
   useEffect(() => {
@@ -546,6 +590,34 @@ export default function ForceGraph({
     if (audioState === 'playing') a.pause();
     else a.play().catch(() => setAudioState('error'));
   };
+
+  // ── Scroll hint no footer do agente ─────────────────────────────
+  const agentScrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const checkScrollHint = useCallback(() => {
+    const el = agentScrollRef.current;
+    if (!el) return;
+    const overflow = el.scrollHeight - el.clientHeight;
+    const remaining = overflow - el.scrollTop;
+    setShowScrollHint(overflow > 8 && remaining > 12);
+  }, []);
+  useEffect(() => {
+    // Re-avalia o hint a cada atualizacao do typewriter (conteudo cresce).
+    const id = requestAnimationFrame(checkScrollHint);
+    return () => cancelAnimationFrame(id);
+  }, [checkScrollHint, typedText, typedSuggestion, agentLoading]);
+  useEffect(() => {
+    const el = agentScrollRef.current;
+    if (!el) return;
+    const h = () => checkScrollHint();
+    el.addEventListener('scroll', h, { passive: true });
+    return () => el.removeEventListener('scroll', h);
+  }, [checkScrollHint]);
+  const scrollAgentToBottom = useCallback(() => {
+    const el = agentScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, []);
 
   // ── Zoom controls ────────────────────────────────────────────────
   const zoomBy = (factor: number) => {
@@ -728,77 +800,126 @@ export default function ForceGraph({
         {/* ═══ FOOTER (agent slot) ═══ */}
         {agentFooter && (
           <div style={{
-            height: 160, flexShrink: 0,
+            height: 160, flexShrink: 0, position: 'relative',
             borderTop: '1px solid var(--color-border-tertiary, rgba(100,116,139,0.25))',
-            padding: '14px 20px', overflowY: 'auto',
             background: 'var(--color-background-secondary, #0c1220)',
-            display: 'flex', gap: 12,
           }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-              background: 'linear-gradient(135deg,#22d3ee,#0a84ff)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#050d1a', fontWeight: 800, fontSize: 14,
-            }}>{agentInitial}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <span style={{ color: '#22d3ee', fontWeight: 700, fontSize: 13 }}>{agentFooter.label}</span>
-                {audioEnabled && hasResponse && (
-                  <button
-                    onClick={toggleAudio}
-                    disabled={audioState === 'loading' || audioState === 'error'}
-                    aria-label={audioState === 'playing' ? 'Pausar audio' : 'Ouvir audio'}
-                    title={audioState === 'error' ? 'TTS indisponivel'
-                      : audioState === 'playing' ? 'Pausar'
-                      : audioState === 'loading' ? 'Carregando audio...'
-                      : 'Ouvir em voz alta'}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      width: 24, height: 24, borderRadius: '50%',
-                      border: `1.5px solid ${audioState === 'playing' ? '#ec4899'
-                        : audioState === 'error' ? 'rgba(100,116,139,0.4)' : '#fbbf24'}`,
-                      background: audioState === 'playing'
-                        ? 'linear-gradient(135deg, rgba(236,72,153,0.25), rgba(168,85,247,0.15))'
-                        : audioState === 'error'
-                        ? 'rgba(100,116,139,0.1)'
-                        : 'linear-gradient(135deg, rgba(251,191,36,0.18), rgba(236,72,153,0.10))',
-                      color: audioState === 'playing' ? '#ec4899'
-                        : audioState === 'error' ? '#64748b' : '#fbbf24',
-                      cursor: audioState === 'error' ? 'not-allowed' : 'pointer',
-                      padding: 0, flexShrink: 0,
-                    }}
-                  >
-                    <AudioIcon size={12} style={audioState === 'loading' ? { animation: 'spin 1s linear infinite' } : undefined} />
-                  </button>
+            <div
+              ref={agentScrollRef}
+              style={{
+                height: '100%', overflowY: 'auto', padding: '14px 20px',
+                display: 'flex', gap: 12,
+              }}
+            >
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                background: 'linear-gradient(135deg,#22d3ee,#0a84ff)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#050d1a', fontWeight: 800, fontSize: 14,
+              }}>{agentInitial}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ color: '#22d3ee', fontWeight: 700, fontSize: 13 }}>{agentFooter.label}</span>
+                  {audioEnabled && hasResponse && (
+                    <button
+                      onClick={toggleAudio}
+                      disabled={audioState === 'loading' || audioState === 'error'}
+                      aria-label={audioState === 'playing' ? 'Pausar audio' : 'Ouvir audio'}
+                      title={audioState === 'error' ? 'TTS indisponivel'
+                        : audioState === 'playing' ? 'Pausar'
+                        : audioState === 'loading' ? 'Carregando audio...'
+                        : 'Ouvir em voz alta'}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 24, height: 24, borderRadius: '50%',
+                        border: `1.5px solid ${audioState === 'playing' ? '#ec4899'
+                          : audioState === 'error' ? 'rgba(100,116,139,0.4)' : '#fbbf24'}`,
+                        background: audioState === 'playing'
+                          ? 'linear-gradient(135deg, rgba(236,72,153,0.25), rgba(168,85,247,0.15))'
+                          : audioState === 'error'
+                          ? 'rgba(100,116,139,0.1)'
+                          : 'linear-gradient(135deg, rgba(251,191,36,0.18), rgba(236,72,153,0.10))',
+                        color: audioState === 'playing' ? '#ec4899'
+                          : audioState === 'error' ? '#64748b' : '#fbbf24',
+                        cursor: audioState === 'error' ? 'not-allowed' : 'pointer',
+                        padding: 0, flexShrink: 0,
+                      }}
+                    >
+                      <AudioIcon size={12} style={audioState === 'loading' ? { animation: 'spin 1s linear infinite' } : undefined} />
+                    </button>
+                  )}
+                </div>
+                {agentLoading && !hasResponse ? (
+                  <LoadingDots />
+                ) : (
+                  <>
+                    <div style={{
+                      color: 'var(--color-text-primary, #cbd5e1)',
+                      fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap',
+                    }}>
+                      {typedText || (hasResponse ? '' : displayPlaceholder)}
+                      {isTyping && typedSuggestion.length === 0 && <span className="fg-caret">▍</span>}
+                    </div>
+                    {(typedSuggestion || (!isTyping && agentSuggestion)) && (() => {
+                      const suggestionText = typedSuggestion || agentSuggestion;
+                      const isClickable = !!agentSuggestionTarget && !isTyping;
+                      const Tag = isClickable ? 'button' : 'div';
+                      return (
+                        <Tag
+                          {...(isClickable
+                            ? { onClick: handleSuggestionClick, type: 'button' as const, 'aria-label': `Selecionar ${agentSuggestionTarget}` }
+                            : {})}
+                          style={{
+                            marginTop: 10, display: 'flex', alignItems: 'flex-start', gap: 6,
+                            padding: '8px 12px', width: '100%',
+                            textAlign: 'left', fontFamily: 'inherit',
+                            background: 'rgba(34,211,238,0.08)',
+                            border: '1px solid rgba(34,211,238,0.3)',
+                            borderRadius: 8, fontSize: 12,
+                            color: '#22d3ee',
+                            cursor: isClickable ? 'pointer' : 'default',
+                            transition: 'background 0.2s, border-color 0.2s, transform 0.15s',
+                          }}
+                          onMouseEnter={isClickable ? (e => {
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(34,211,238,0.18)';
+                            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(34,211,238,0.6)';
+                          }) : undefined}
+                          onMouseLeave={isClickable ? (e => {
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(34,211,238,0.08)';
+                            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(34,211,238,0.3)';
+                          }) : undefined}
+                        >
+                          <ArrowRight size={13} style={{ marginTop: 2, flexShrink: 0 }} />
+                          <span>{suggestionText}{isTyping && typedSuggestion.length < agentSuggestion.length && <span className="fg-caret">▍</span>}</span>
+                        </Tag>
+                      );
+                    })()}
+                  </>
                 )}
               </div>
-              {agentLoading && !hasResponse ? (
-                <LoadingDots />
-              ) : (
-                <>
-                  <div style={{
-                    color: 'var(--color-text-primary, #cbd5e1)',
-                    fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap',
-                  }}>
-                    {typedText || (hasResponse ? '' : displayPlaceholder)}
-                    {isTyping && typedSuggestion.length === 0 && <span className="fg-caret">▍</span>}
-                  </div>
-                  {(typedSuggestion || (!isTyping && agentSuggestion)) && (
-                    <div style={{
-                      marginTop: 10, display: 'flex', alignItems: 'flex-start', gap: 6,
-                      padding: '6px 10px',
-                      background: 'rgba(34,211,238,0.08)',
-                      border: '1px solid rgba(34,211,238,0.3)',
-                      borderRadius: 8, fontSize: 12,
-                      color: '#22d3ee',
-                    }}>
-                      <ArrowRight size={13} style={{ marginTop: 2, flexShrink: 0 }} />
-                      <span>{typedSuggestion || agentSuggestion}{isTyping && typedSuggestion.length < agentSuggestion.length && <span className="fg-caret">▍</span>}</span>
-                    </div>
-                  )}
-                </>
-              )}
             </div>
+
+            {/* Scroll hint — botao branco com chevron preto, bob vertical */}
+            {showScrollHint && (
+              <button
+                onClick={scrollAgentToBottom}
+                aria-label="Rolar para ver mais"
+                title="Há mais conteúdo — clique para rolar"
+                style={{
+                  position: 'absolute', right: 14, bottom: 10,
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: '#ffffff', color: '#0c1220',
+                  border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.05)',
+                  animation: 'fg-scroll-bob 1.4s ease-in-out infinite',
+                  zIndex: 2,
+                  padding: 0,
+                }}
+              >
+                <ChevronDown size={16} strokeWidth={2.5} />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -808,6 +929,10 @@ export default function ForceGraph({
         @keyframes fg-caret { 0%, 50% { opacity: 1 } 51%, 100% { opacity: 0 } }
         .fg-caret { display: inline-block; margin-left: 1px; color: #22d3ee;
           font-weight: 700; animation: fg-caret 0.9s steps(1) infinite; }
+        @keyframes fg-scroll-bob {
+          0%, 100% { transform: translateY(0); box-shadow: 0 4px 14px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.05); }
+          50% { transform: translateY(4px); box-shadow: 0 2px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.05); }
+        }
       `}</style>
     </div>
   );

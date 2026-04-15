@@ -71,15 +71,16 @@ function fallbackEllaAnalysis(
     ? `Conexão mais forte (${pct}%) com NR-${nrLabel(Number(strongest.node.id.replace('nr-', '')))}.`
     : 'Sem correlações registradas neste setor.';
   const bayes = Math.round((node.bayesianWeight ?? 0) * 100);
-  const suggestionTarget = next ?? strongest;
-  const suggestion = suggestionTarget
-    ? `Tente apertar o nó da NR-${nrLabel(Number(suggestionTarget.node.id.replace('nr-', '')))} que te conto a importância dela.`
+  const suggestionNode = next ?? strongest;
+  const suggestion = suggestionNode
+    ? `Tente apertar o nó da NR-${nrLabel(Number(suggestionNode.node.id.replace('nr-', '')))} que te conto a importância dela.`
     : '';
   return {
     text: `NR-${nrLabel(nrNumber)}.\n\n` +
       `Conexões neste setor: ${conns}. ${strongLine} ` +
       `Grupo: ${node.group}. Relevância setorial (peso a priori bayesiano): ${bayes}%.`,
     suggestion,
+    suggestionTarget: suggestionNode?.node.id,
   };
 }
 
@@ -128,6 +129,13 @@ export default function NRCorrelationGraph({ nrs, sectorName, onClose }: NRCorre
   );
 }
 
+function nrCodeToNodeId(code: string, availableIds: Set<string>): string | undefined {
+  const m = code.match(/NR-?(\d{1,2})/i);
+  if (!m) return undefined;
+  const id = `nr-${Number(m[1])}`;
+  return availableIds.has(id) ? id : undefined;
+}
+
 async function callEllaAnalysis(
   node: ForceGraphNode,
   neighbors: NeighborEntry[],
@@ -136,6 +144,7 @@ async function callEllaAnalysis(
 ): Promise<AgentResponseObject> {
   const nrNumber = Number(node.id.replace('nr-', ''));
   const title = nrTitleById.get(nrNumber) ?? `NR-${nrLabel(nrNumber)}`;
+  const availableIds = new Set<string>([node.id, ...neighbors.map(nb => nb.node.id)]);
   const payload = {
     sectorName,
     node: {
@@ -165,7 +174,15 @@ async function callEllaAnalysis(
     if (!res.ok) throw new Error(`status ${res.status}`);
     const data = await res.json();
     if (!data?.text) throw new Error('resposta sem text');
-    return { text: String(data.text), suggestion: data.suggestion ? String(data.suggestion) : '' };
+    const suggestion = data.suggestion ? String(data.suggestion) : '';
+    let suggestionTarget: string | undefined;
+    if (data.suggestionTarget) {
+      suggestionTarget = nrCodeToNodeId(String(data.suggestionTarget), availableIds);
+    }
+    if (!suggestionTarget && suggestion) {
+      suggestionTarget = nrCodeToNodeId(suggestion, availableIds);
+    }
+    return { text: String(data.text), suggestion, suggestionTarget };
   } catch {
     return fallbackEllaAnalysis(node, neighbors);
   }
