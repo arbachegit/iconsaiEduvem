@@ -125,22 +125,16 @@ Alem da narrativa, devolver fases de implementacao, custos APROXIMADOS (disclaim
 explicito: sao estimativas indicativas, nao orcamento real), riscos e um disclaimer
 final.
 
-Shape obrigatorio: {
-  "narrative": "3-4 paragrafos em portugues brasileiro, contando a historia do plano",
-  "phases": [
-    { "title": "Fase 1 - nome curto", "duration": "X meses", "actions": ["acao 1", "acao 2", "acao 3"] },
-    ... (3 a 4 fases)
-  ],
-  "costs": [
-    { "item": "descricao do custo", "range": "R$ X.XXX - R$ XX.XXX", "note": "explicacao curta" },
-    ... (3 a 6 itens)
-  ],
-  "risks": [
-    { "risk": "descricao do risco", "mitigation": "como mitigar em 1 frase" },
-    ... (3 a 5 riscos)
-  ],
-  "disclaimer": "frase unica avisando que custos sao aproximados e dependem do porte/contexto"
-}`,
+LIMITES RIGIDOS — obrigatorios pra nao estourar o JSON:
+- narrative: EXATAMENTE 3 paragrafos, maximo 150 palavras no TOTAL.
+- phases: EXATAMENTE 3 fases. Cada uma com 3 actions curtas (<= 80 caracteres cada).
+- costs: EXATAMENTE 4 itens. item/note curtos, range no formato "R$ X-Y mil" ou "R$ X-Y".
+- risks: EXATAMENTE 3 riscos. risk e mitigation em 1 frase curta cada.
+- disclaimer: 1 frase.
+NAO use palavras desnecessarias. Seja direto. Cortar > alongar.
+
+Shape obrigatorio (JSON puro):
+{"narrative":"...","phases":[{"title":"...","duration":"...","actions":["...","...","..."]},{...},{...}],"costs":[{"item":"...","range":"...","note":"..."},...],"risks":[{"risk":"...","mitigation":"..."},...],"disclaimer":"..."}`,
     prompt: `Setor: ${sectorName}
 Objetivo do aluno: "${goal}"
 Driver principal: ${primary.code} ${primary.title}
@@ -157,9 +151,44 @@ function parseJson(raw: string): unknown {
     .replace(/```$/i, '')
     .trim()
   const start = cleaned.indexOf('{')
-  const end = cleaned.lastIndexOf('}')
-  if (start < 0 || end < start) throw new Error('LLM sem JSON')
-  return JSON.parse(cleaned.slice(start, end + 1))
+  if (start < 0) throw new Error('LLM sem JSON')
+  let slice = cleaned.slice(start)
+  try {
+    const end = slice.lastIndexOf('}')
+    if (end >= 0) return JSON.parse(slice.slice(0, end + 1))
+  } catch {
+    // fallthrough para repair
+  }
+  // Repair: fecha strings, arrays e objetos abertos quando a resposta foi truncada.
+  return JSON.parse(repairTruncatedJson(slice))
+}
+
+function repairTruncatedJson(input: string): string {
+  let out = input
+  // Remove virgula pendente no final
+  out = out.replace(/[\s,]*$/, '')
+  // Conta abertos/fechados fora de strings
+  let inStr = false
+  let esc = false
+  const stack: string[] = []
+  for (let i = 0; i < out.length; i++) {
+    const c = out[i]
+    if (esc) { esc = false; continue }
+    if (c === '\\' && inStr) { esc = true; continue }
+    if (c === '"') { inStr = !inStr; continue }
+    if (inStr) continue
+    if (c === '{' || c === '[') stack.push(c)
+    else if (c === '}') { if (stack[stack.length - 1] === '{') stack.pop() }
+    else if (c === ']') { if (stack[stack.length - 1] === '[') stack.pop() }
+  }
+  // Se terminou dentro de uma string, fecha a aspa
+  if (inStr) out += '"'
+  // Fecha abertos na ordem reversa
+  while (stack.length) {
+    const top = stack.pop()
+    out += top === '{' ? '}' : ']'
+  }
+  return out
 }
 
 export async function POST(req: NextRequest) {
