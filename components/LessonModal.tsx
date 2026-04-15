@@ -259,6 +259,7 @@ export default function LessonModal({
 
   return (
     <div
+      className="lesson-modal-outer"
       onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
       style={{
         position: 'fixed', inset: 0, zIndex: 1200,
@@ -268,6 +269,7 @@ export default function LessonModal({
       }}
     >
       <div
+        className="lesson-modal-inner"
         style={{
           width: 'min(1400px, 96vw)', height: '92vh',
           background: '#050d1a', border: `1px solid ${accentBorder}`, borderRadius: 16,

@@ -230,18 +230,25 @@ input[type="range"]::-moz-range-thumb:hover {
     display: none !important;
   }
 
-  /* ── Modal: fullscreen no mobile ── */
+  /* ── Modal: fullscreen no mobile, abaixo da nav bar ── */
   .lesson-modal-outer {
     padding: 0 !important;
+    padding-top: env(safe-area-inset-top, 0) !important;
     align-items: stretch !important;
   }
   .lesson-modal-inner {
     width: 100% !important;
     max-width: 100% !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
+    height: 100dvh !important;
+    height: calc(100vh - env(safe-area-inset-top, 0)) !important;
+    max-height: 100dvh !important;
     border-radius: 0 !important;
     margin: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
+  }
+  /* Header do modal: não ficar sob barra de navegação */
+  .lesson-modal-inner > div:first-child {
+    padding-top: max(8px, env(safe-area-inset-top, 0)) !important;
   }
 
   /* ── Grid de NRs: 1 coluna no mobile ── */
