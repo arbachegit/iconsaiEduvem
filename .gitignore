@@ -8,3 +8,4 @@ dist
 public/build-id.txt
 /tmp
 *.log
+tsconfig.tsbuildinfo
