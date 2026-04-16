@@ -50,6 +50,9 @@ export interface AgentFooterConfig {
   ) => Promise<AgentResponse>;
   /** Endpoint TTS (POST text → audio/mpeg blob). Se omitido, audio nao e ativado. */
   ttsEndpoint?: string;
+  /** Payload extra que o ForceGraph adiciona ao body do POST do TTS (alem de text/voice).
+   *  Ex: { instructions: "Fale com sotaque carioca..." } pra customizar sotaque por estado. */
+  ttsExtraPayload?: Record<string, unknown>;
   /** Toca audio automaticamente quando a resposta do agente termina. Default: true. */
   autoPlayAudio?: boolean;
   /** Velocidade do typewriter em chars/segundo. Default: 42. */
@@ -563,7 +566,11 @@ export default function ForceGraph({
     fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: audioText, voice: 'nova' }),
+      body: JSON.stringify({
+        text: audioText,
+        voice: 'nova',
+        ...(agentFooter.ttsExtraPayload || {}),
+      }),
     })
       .then(r => r.ok ? r.blob() : Promise.reject(new Error(`tts ${r.status}`)))
       .then(blob => {
@@ -582,7 +589,13 @@ export default function ForceGraph({
       .catch(() => { if (!cancelled) setAudioState('error'); });
 
     return () => { cancelled = true; };
-  }, [agentText, agentSuggestion, agentFooter?.ttsEndpoint, agentFooter?.autoPlayAudio, stopAudio]);
+  }, [
+    agentText, agentSuggestion,
+    agentFooter?.ttsEndpoint, agentFooter?.autoPlayAudio,
+    // ttsExtraPayload e um objeto — observa via JSON pra detectar mudanca de sotaque
+    JSON.stringify(agentFooter?.ttsExtraPayload ?? null),
+    stopAudio,
+  ]);
 
   const toggleAudio = () => {
     const a = audioRef.current;

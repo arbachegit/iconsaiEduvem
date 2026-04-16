@@ -18,6 +18,8 @@ interface NRCorrelationGraphProps {
   nrs: NRItem[];
   sectorName: string;
   onClose: () => void;
+  /** Sotaque selecionado pelo usuario (BrazilMapModal). Vai pro TTS via instructions. */
+  accentInstructions?: string;
 }
 
 const NR_GROUPS: Record<string, number[]> = {
@@ -84,7 +86,7 @@ function fallbackEllaAnalysis(
   };
 }
 
-export default function NRCorrelationGraph({ nrs, sectorName, onClose }: NRCorrelationGraphProps) {
+export default function NRCorrelationGraph({ nrs, sectorName, onClose, accentInstructions }: NRCorrelationGraphProps) {
   const nrTitleById = useMemo(() => {
     const m = new Map<number, string>();
     nrs.forEach(n => m.set(n.id, n.title));
@@ -110,10 +112,11 @@ export default function NRCorrelationGraph({ nrs, sectorName, onClose }: NRCorre
     label: 'Ella',
     placeholder: 'Clique em um nó pra Ella analisar as correlações.',
     ttsEndpoint: '/api/eduven/tts',
+    ttsExtraPayload: accentInstructions ? { instructions: accentInstructions } : undefined,
     autoPlayAudio: false,
     typewriterCps: 75,
     onNodeSelect: async (node, neighbors) => callEllaAnalysis(node, neighbors, sectorName, nrTitleById),
-  }), [sectorName, nrTitleById]);
+  }), [sectorName, nrTitleById, accentInstructions]);
 
   return (
     <ForceGraph

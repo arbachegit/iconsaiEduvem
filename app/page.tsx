@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SECTORS, DEFAULT_SECTOR, getNRsForSector } from '@/data/sectors'
 import { NR_INDEX } from '@/data/nr-index'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -8,6 +8,11 @@ import NRGrid from '@/components/NRGrid'
 import { GitFork, BookOpen } from 'lucide-react'
 import NRCorrelationGraph from '@/components/NRCorrelationGraph'
 import StorytellingModal from '@/components/StorytellingModal'
+import BrazilMapButton from '@/components/BrazilMapButton'
+import BrazilMapModal from '@/components/BrazilMapModal'
+import { UF_META } from '@/data/uf-meta'
+
+const UF_STORAGE_KEY = 'eduvem.selectedUF'
 
 const C = {
   bg: '#050d1a', cyan: '#00d4ff', muted: '#94a3b8', dim: '#64748b',
@@ -30,7 +35,24 @@ export default function HomePage() {
   const [activeSector, setActiveSector] = useState(DEFAULT_SECTOR)
   const [showGraph, setShowGraph] = useState(false)
   const [showStorytelling, setShowStorytelling] = useState(false)
+  const [showMap, setShowMap] = useState(false)
+  const [selectedUFCodarea, setSelectedUFCodarea] = useState<string | null>(null)
   const isMobile = useIsMobile()
+
+  // Hidrata UF do localStorage no cliente
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(UF_STORAGE_KEY)
+      if (saved && UF_META[saved]) setSelectedUFCodarea(saved)
+    } catch { /* localStorage indisponivel */ }
+  }, [])
+
+  const selectedUF = selectedUFCodarea ? UF_META[selectedUFCodarea] : null
+  const handleUFSelect = (codarea: string) => {
+    setSelectedUFCodarea(codarea)
+    try { localStorage.setItem(UF_STORAGE_KEY, codarea) } catch { /* */ }
+    setShowMap(false)
+  }
   const sector = SECTORS.find(s => s.slug === activeSector)!
   const nrMap = new Map(NR_INDEX.filter(n => n.status === 'vigente').map(n => [n.id, n]))
 
@@ -73,6 +95,11 @@ export default function HomePage() {
           </h1>
           {isMobile && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <BrazilMapButton
+                size={28}
+                selectedCodarea={selectedUFCodarea}
+                onClick={() => setShowMap(true)}
+              />
               <button
                 onClick={() => setShowStorytelling(true)}
                 title="Storytelling — plano de ação com IA"
@@ -106,6 +133,12 @@ export default function HomePage() {
           {/* Botões desktop-only; no mobile eles ficam na Linha 1 ao lado do título */}
           {!isMobile && (
             <>
+              <BrazilMapButton
+                size={32}
+                selectedCodarea={selectedUFCodarea}
+                onClick={() => setShowMap(true)}
+              />
+              <span style={{ width: 4, flexShrink: 0 }} />
               <button
                 onClick={() => setShowStorytelling(true)}
                 title="Storytelling — plano de ação com IA"
@@ -192,6 +225,7 @@ export default function HomePage() {
           nrs={nrsWithRelevance}
           sectorName={sector.name}
           onClose={() => setShowGraph(false)}
+          accentInstructions={selectedUF?.accentInstructions}
         />
       )}
 
@@ -202,6 +236,15 @@ export default function HomePage() {
           sectorSlug={activeSector}
           sectorName={sector.name}
           onClose={() => setShowStorytelling(false)}
+        />
+      )}
+
+      {/* Brazil Map Modal */}
+      {showMap && (
+        <BrazilMapModal
+          selectedCodarea={selectedUFCodarea}
+          onSelect={(uf) => handleUFSelect(uf.codarea)}
+          onClose={() => setShowMap(false)}
         />
       )}
     </main>

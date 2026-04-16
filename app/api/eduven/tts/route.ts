@@ -74,6 +74,9 @@ export async function POST(req: NextRequest) {
     const text = String(body.text || '')
     const voice = (body.voice || VOICE_DEFAULT) as
       | 'nova' | 'alloy' | 'shimmer' | 'onyx' | 'echo' | 'fable' | 'sage' | 'coral'
+    // Override regional do sotaque (vem do BrazilMapModal). Se nao mandar,
+    // usa o default paulistano.
+    const customInstructions = body.instructions ? String(body.instructions).slice(0, 1500) : null
 
     if (!text.trim()) {
       return Response.json({ error: 'text required' }, { status: 400 })
@@ -85,6 +88,7 @@ export async function POST(req: NextRequest) {
     }
 
     const openai = getOpenAI()
+    const instructionsForModel = customInstructions || VOICE_INSTRUCTIONS
 
     // Tenta gpt-4o-mini-tts (novo modelo com instructions). Se falhar
     // (modelo nao disponivel na conta), cai pra tts-1 com voz nova.
@@ -96,7 +100,7 @@ export async function POST(req: NextRequest) {
         input: cleaned,
         response_format: 'mp3',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        instructions: VOICE_INSTRUCTIONS as any,
+        instructions: instructionsForModel as any,
       })
     } catch (err) {
       const msg = (err as Error).message || ''
