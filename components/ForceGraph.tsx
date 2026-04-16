@@ -154,6 +154,7 @@ export default function ForceGraph({
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.src = '';  // libera o decoder
       audioRef.current = null;
     }
     if (audioUrlRef.current) {
@@ -161,6 +162,20 @@ export default function ForceGraph({
       audioUrlRef.current = null;
     }
     setAudioState('idle');
+  }, []);
+
+  // PREMISSA OBRIGATORIA: ao desmontar (modal fechado pelo parent),
+  // qualquer audio em reproducao DEVE ser cortado imediatamente.
+  // Esse useEffect com [] só roda cleanup no unmount real do componente.
+  useEffect(() => {
+    return () => {
+      const a = audioRef.current
+      if (a) { a.pause(); a.src = '' }
+      const url = audioUrlRef.current
+      if (url) URL.revokeObjectURL(url)
+      audioRef.current = null
+      audioUrlRef.current = null
+    }
   }, []);
 
   // ── (Re)inicializa dados originais quando props mudam ou reset ───

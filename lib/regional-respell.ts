@@ -30,14 +30,19 @@ interface RespellRule {
 
 /* ── Conjuntos de regras por região ───────────────────────────────── */
 
-// CARIOCA (RJ): chiado em s antes de consoantes; rr arrastado; "tchi/dji"
+// CARIOCA (RJ): chiado em S — a marca do sotaque. Aplica em duas posicoes:
+//   1) S em coda interna antes de consoante: "esta" → "eshta", "escola" → "eshcola"
+//   2) S no final de palavra: "vamos" → "vamosh", "as casas" → "ash cazash"
+// Tambem ti/di palatal e RR arrastado.
 const CARIOCA: RespellRule[] = [
-  // Final -s antes de pausa: "vamos" → "vamosh"
-  { pattern: /\b(\w*[aeiou])s\b/gi, replace: '$1sh' },
+  // (1) S em coda interna — antes de qualquer consoante (exceto S/H/J/X que ja sao chiantes)
+  { pattern: /s(?=[pctkqgbdfvmnlr])/gi, replace: 'sh' },
+  // (2) Final -s antes de pausa ou espaço: "vamos" → "vamosh"
+  { pattern: /s(?=\s|$|[.,!?;:])/gi, replace: 'sh' },
   // ti/di palatalizados (toda BR mas marcado no RJ)
   { pattern: /ti(?=[aeoiu])/gi, replace: 'tchi' },
   { pattern: /di(?=[aeoiu])/gi, replace: 'dji' },
-  // -te final
+  // -te / -de finais
   { pattern: /te\b/gi, replace: 'tchi' },
   { pattern: /de\b/gi, replace: 'dji' },
   // RR arrastado (sugere com "rr")
@@ -115,13 +120,15 @@ const CURITIBANO: RespellRule[] = [
   { pattern: /\brr/gi, replace: 'rrh' },
 ]
 
-// CATARINENSE (SC manezinho): "ti/di" suave
+// CATARINENSE (SC manezinho): chia o S igual carioca + "ti/di" suave
 const CATARINENSE: RespellRule[] = [
+  // Chiamento de S em coda interna e final (manezinho herdou de Açores)
+  { pattern: /s(?=[pctkqgbdfvmnlr])/gi, replace: 'sh' },
+  { pattern: /s(?=\s|$|[.,!?;:])/gi, replace: 'sh' },
   { pattern: /ti(?=[aeoiu])/gi, replace: 'tchi' },
   { pattern: /di(?=[aeoiu])/gi, replace: 'dji' },
   { pattern: /te\b/gi, replace: 'tchi' },
   { pattern: /de\b/gi, replace: 'dji' },
-  { pattern: /\b(\w*[aeiou])s\b/gi, replace: '$1sh' },
 ]
 
 // GOIANO/SERTANEJO (GO): caipira, "rr" cortado, drop -r final
