@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
+import { respellForRegion } from '@/lib/regional-respell'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -77,13 +78,18 @@ export async function POST(req: NextRequest) {
     // Override regional do sotaque (vem do BrazilMapModal). Se nao mandar,
     // usa o default paulistano.
     const customInstructions = body.instructions ? String(body.instructions).slice(0, 1500) : null
+    const regionSigla = body.regionSigla ? String(body.regionSigla).slice(0, 4) : null
 
     if (!text.trim()) {
       return Response.json({ error: 'text required' }, { status: 400 })
     }
 
+    // 1) Pré-processa pra TTS (remove markdown, normaliza números/siglas).
+    // 2) Aplica respell regional na ortografia (drives accent muito mais
+    //    que o `instructions` field do gpt-4o-mini-tts).
     const cleaned = preprocessForTTS(text)
-    if (!cleaned) {
+    const respelled = regionSigla ? respellForRegion(cleaned, regionSigla) : cleaned
+    if (!respelled) {
       return Response.json({ error: 'text empty after cleaning' }, { status: 400 })
     }
 
@@ -97,7 +103,7 @@ export async function POST(req: NextRequest) {
       mp3Response = await openai.audio.speech.create({
         model: 'gpt-4o-mini-tts',
         voice,
-        input: cleaned,
+        input: respelled,
         response_format: 'mp3',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         instructions: instructionsForModel as any,
@@ -110,7 +116,7 @@ export async function POST(req: NextRequest) {
         mp3Response = await openai.audio.speech.create({
           model: 'tts-1',
           voice,
-          input: cleaned,
+          input: respelled,
           response_format: 'mp3',
           speed: 0.95,   // leve lentidao pra naturalidade
         })

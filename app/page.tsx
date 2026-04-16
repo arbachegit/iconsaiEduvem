@@ -226,6 +226,7 @@ export default function HomePage() {
           sectorName={sector.name}
           onClose={() => setShowGraph(false)}
           accentInstructions={selectedUF?.accentInstructions}
+          regionSigla={selectedUF?.sigla}
         />
       )}
 
