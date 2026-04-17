@@ -359,20 +359,42 @@ input[type="range"]::-moz-range-thumb:hover {
 }
 
 /* ════════════════════════════════════════════════════════════
-   NR CARD container — shimmer sweep + hover lift + code glow
+   NR CARD — Industrial Dossier aesthetic
    ════════════════════════════════════════════════════════════ */
 
 .nr-card {
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+  will-change: transform;
 }
 .nr-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   border-color: var(--nr-color);
-  box-shadow: 0 12px 36px rgba(0,0,0,0.45),
-              0 0 0 1px var(--nr-color),
-              0 0 28px var(--nr-color)55;
+  box-shadow:
+    0 18px 42px rgba(0,0,0,0.55),
+    0 0 0 1px var(--nr-color),
+    0 0 48px -8px var(--nr-color);
+}
+.nr-card:focus-visible {
+  outline: none;
+  border-color: var(--nr-color);
+  box-shadow:
+    0 0 0 2px #050d1a,
+    0 0 0 4px var(--nr-color);
+}
+.nr-card:active {
+  transform: translateY(-1px);
 }
 
+/* Entrance — each card reveals with a subtle slide + fade */
+@keyframes nr-card-in {
+  0%   { opacity: 0; transform: translateY(14px) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Shimmer sweep over the card */
 @keyframes nr-card-shimmer {
   0%   { background-position: -100% 0; opacity: 0; }
   15%  { opacity: 1; }
@@ -385,11 +407,48 @@ input[type="range"]::-moz-range-thumb:hover {
   animation-delay: var(--nr-delay);
 }
 
-@keyframes nr-card-code-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 transparent; }
-  50%      { box-shadow: 0 0 16px var(--nr-color)44; }
+/* Hazard stripe: on hover, scroll the diagonal pattern upward */
+@keyframes nr-hazard-scroll {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 -56px; }
 }
-.nr-card .nr-code {
-  animation: nr-card-code-pulse 4s ease-in-out infinite;
-  animation-delay: var(--nr-delay);
+.nr-card:hover .nr-hazard-stripe {
+  animation: nr-hazard-scroll 1.6s linear infinite;
+}
+
+/* CTA arrow nudges on hover */
+.nr-cta-arrow {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nr-card:hover .nr-cta-arrow {
+  transform: translate(2px, -2px);
+}
+
+/* Code label: subtle glow amplification on hover */
+.nr-card .nr-code-xl {
+  transition: text-shadow 0.3s ease, letter-spacing 0.3s ease;
+}
+.nr-card:hover .nr-code-xl {
+  text-shadow:
+    0 0 28px var(--nr-color),
+    0 0 2px var(--nr-color);
+}
+
+/* Stamp: faint hand-applied wobble */
+@keyframes nr-stamp-settle {
+  0%   { transform: rotate(-18deg) scale(1.25); opacity: 0; }
+  60%  { transform: rotate(-8deg)  scale(0.96); opacity: 1; }
+  100% { transform: rotate(-10deg) scale(1);    opacity: 1; }
+}
+.nr-card .nr-stamp {
+  animation: nr-stamp-settle 0.7s cubic-bezier(0.25, 1.4, 0.5, 1) both;
+  animation-delay: calc(var(--nr-delay) + 0.3s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nr-card,
+  .nr-card * {
+    animation: none !important;
+    transition: none !important;
+  }
 }

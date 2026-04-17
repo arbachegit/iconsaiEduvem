@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sprout, Mountain, Flame, FlaskConical, BookOpen, CheckCircle2 } from 'lucide-react'
+import { Sprout, Mountain, Flame, CheckCircle2, ArrowUpRight } from 'lucide-react'
 import { getSectorMeta } from '@/lib/sectors-meta'
 import type { NRProgress } from '@/lib/student-progress'
 import LessonModal from './LessonModal'
@@ -25,13 +25,21 @@ interface NRGridProps {
   progress?: Record<number, NRProgress>
 }
 
-const RELEVANCE_LABEL: Record<number, string> = {
-  5: 'Critica',
-  4: 'Muito relevante',
-  3: 'Relevante',
-  2: 'Ocasional',
-  1: 'Tangencial',
-  0: 'Irrelevante',
+type TierMeta = {
+  label: string
+  short: string
+  hazard: boolean
+  tint: string
+  glyph: string
+}
+
+const RELEVANCE_TIER: Record<number, TierMeta> = {
+  5: { label: 'CRÍTICA',     short: 'NV-5', hazard: true,  tint: '#ef4444', glyph: '▲▲▲▲▲' },
+  4: { label: 'ALTA',        short: 'NV-4', hazard: true,  tint: '#f97316', glyph: '▲▲▲▲·' },
+  3: { label: 'RELEVANTE',   short: 'NV-3', hazard: false, tint: '#eab308', glyph: '▲▲▲··' },
+  2: { label: 'OCASIONAL',   short: 'NV-2', hazard: false, tint: '#64748b', glyph: '▲▲···' },
+  1: { label: 'TANGENCIAL',  short: 'NV-1', hazard: false, tint: '#475569', glyph: '▲····' },
+  0: { label: 'ARQUIVADA',   short: 'NV-0', hazard: false, tint: '#334155', glyph: '·····' },
 }
 
 export default function NRGrid({ nrs, sectorSlug, sectorName, progress = {} }: NRGridProps) {
@@ -45,28 +53,72 @@ export default function NRGrid({ nrs, sectorSlug, sectorName, progress = {} }: N
 
   return (
     <>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 24px 80px' }}>
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 30, fontWeight: 700, color: '#e2e8f0', marginBottom: 8, lineHeight: 1.2 }}>
-            NRs para {sectorName}
+      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '40px 24px 96px' }}>
+        {/* ═══ HEADER DO CATALOGO ═══ */}
+        <header style={{ marginBottom: 40, position: 'relative' }}>
+          <div style={{
+            fontSize: 11, fontWeight: 600,
+            color: accentColor, opacity: 0.75,
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.22em', textTransform: 'uppercase',
+            marginBottom: 14,
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <span style={{
+              width: 28, height: 1, background: accentColor, opacity: 0.6,
+            }} />
+            CATÁLOGO DE DOSSIÊS REGULATÓRIOS · MTE / CNAE
+          </div>
+
+          <h1 style={{
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontSize: 40, fontWeight: 800,
+            color: '#f1f5f9', lineHeight: 1.04,
+            letterSpacing: '-0.02em',
+            marginBottom: 14,
+          }}>
+            Normas para <span style={{ color: accentColor }}>{sectorName}</span>
           </h1>
-          <p style={{ fontSize: 15, color: '#94a3b8' }}>
-            {nrs.length} normas aplicaveis ao setor, ordenadas por relevancia. Click numa pra abrir a aula adaptativa.
-          </p>
-        </div>
+
+          <div style={{
+            display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap',
+            fontSize: 13, color: '#94a3b8',
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+          }}>
+            <span>
+              <strong style={{
+                color: '#e2e8f0',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 14,
+              }}>{String(nrs.length).padStart(2, '0')}</strong> normas aplicáveis
+            </span>
+            <span style={{ opacity: 0.4 }}>·</span>
+            <span>ordenadas por nível de criticidade</span>
+            <span style={{ opacity: 0.4 }}>·</span>
+            <span style={{ fontStyle: 'italic' }}>clique para abrir o dossiê</span>
+          </div>
+        </header>
 
         {critical.length > 0 && (
-          <Section title="Criticas e muito relevantes" subtitle="Sao a base da seguranca neste setor. Comece por aqui." color={accentColor} nrs={critical} onOpen={setOpenNR} progress={progress} />
+          <Section tier="critical" title="Crítica · Alta" subtitle="Base da segurança neste setor. Comece por aqui." color={accentColor} nrs={critical} onOpen={setOpenNR} progress={progress} />
         )}
         {relevant.length > 0 && (
-          <Section title="Relevantes" subtitle="Aplicam-se a parte significativa do dia-a-dia." color="#94a3b8" nrs={relevant} onOpen={setOpenNR} progress={progress} />
+          <Section tier="relevant" title="Relevante" subtitle="Aplica-se a parte significativa do dia-a-dia." color={accentColor} nrs={relevant} onOpen={setOpenNR} progress={progress} />
         )}
         {occasional.length > 0 && (
-          <Section title="Ocasionais e tangenciais" subtitle="Tocam o setor em situacoes especificas." color="#475569" nrs={occasional} onOpen={setOpenNR} progress={progress} />
+          <Section tier="occasional" title="Ocasional · Tangencial" subtitle="Tocam o setor em situações específicas." color={accentColor} nrs={occasional} onOpen={setOpenNR} progress={progress} />
         )}
+
         {nrs.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 80, color: '#64748b' }}>
-            Nenhuma NR classificada para este setor ainda.
+          <div style={{
+            textAlign: 'center', padding: '80px 24px',
+            color: '#64748b',
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.12em',
+            border: '1px dashed rgba(100,116,139,0.3)',
+            borderRadius: 12,
+          }}>
+            NENHUMA NORMA CLASSIFICADA PARA ESTE SETOR AINDA.
           </div>
         )}
       </div>
@@ -85,7 +137,8 @@ export default function NRGrid({ nrs, sectorSlug, sectorName, progress = {} }: N
   )
 }
 
-function Section({ title, subtitle, color, nrs, onOpen, progress = {} }: {
+function Section({ tier, title, subtitle, color, nrs, onOpen, progress = {} }: {
+  tier: 'critical' | 'relevant' | 'occasional'
   title: string
   subtitle: string
   color: string
@@ -93,214 +146,436 @@ function Section({ title, subtitle, color, nrs, onOpen, progress = {} }: {
   onOpen: (nr: NRWithRelevance) => void
   progress?: Record<number, NRProgress>
 }) {
+  const tierTint = tier === 'critical' ? color : tier === 'relevant' ? '#cbd5e1' : '#64748b'
+
   return (
-    <div style={{ marginBottom: 40 }}>
-      <div style={{ marginBottom: 16, paddingBottom: 8, borderBottom: `1px solid ${color}33` }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 1 }}>
-          {title}
-        </h2>
-        <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>{subtitle}</p>
-      </div>
+    <section style={{ marginBottom: 52 }}>
       <div style={{
+        display: 'flex', alignItems: 'baseline', gap: 14,
+        marginBottom: 20, paddingBottom: 10,
+        borderBottom: `1px solid ${tierTint}26`,
+      }}>
+        <span style={{
+          display: 'inline-block', width: 12, height: 12,
+          border: `2px solid ${tierTint}`,
+          borderRadius: 2,
+          transform: 'rotate(45deg)',
+          flexShrink: 0,
+        }} />
+        <div style={{ flex: 1 }}>
+          <h2 style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 12, fontWeight: 700,
+            color: tierTint,
+            textTransform: 'uppercase', letterSpacing: '0.25em',
+            lineHeight: 1,
+            marginBottom: 6,
+          }}>
+            {title}
+          </h2>
+          <p style={{
+            fontSize: 13, color: '#64748b',
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontStyle: 'italic',
+          }}>
+            {subtitle}
+          </p>
+        </div>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 11, color: `${tierTint}aa`,
+          letterSpacing: '0.1em',
+        }}>
+          [ {String(nrs.length).padStart(2, '0')} ]
+        </span>
+      </div>
+
+      <div className="nr-grid" style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-        gap: 14,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
+        gap: 18,
       }}>
         {nrs.map((nr, idx) => (
-          <NRCard key={nr.id} nr={nr} color={color} onOpen={onOpen} delay={idx * 0.15} progress={progress[nr.id]} />
+          <NRCard
+            key={nr.id}
+            nr={nr}
+            sectorColor={color}
+            onOpen={onOpen}
+            delay={idx * 0.08}
+            progress={progress[nr.id]}
+          />
         ))}
       </div>
-    </div>
+    </section>
   )
 }
 
-function NRCard({ nr, color, onOpen, delay, progress }: {
+function NRCard({ nr, sectorColor, onOpen, delay, progress }: {
   nr: NRWithRelevance
-  color: string
+  sectorColor: string
   onOpen: (nr: NRWithRelevance) => void
   delay: number
   progress?: NRProgress
 }) {
+  const tier = RELEVANCE_TIER[nr.relevance] || RELEVANCE_TIER[0]
+  const accent = tier.hazard ? tier.tint : sectorColor
   const p = progress
-  const hasActivity = p && p.totalSessions > 0
+  const hasActivity = !!p && p.totalSessions > 0
+  const dossierNum = String(nr.id).padStart(3, '0')
+
+  const maxDiffCount = Math.max(1, p?.easierCount || 0, p?.sameCount || 0, p?.harderCount || 0)
 
   return (
     <button
       onClick={() => onOpen(nr)}
       className="nr-card"
+      aria-label={`Abrir dossiê ${nr.code}: ${nr.title}`}
       style={{
         position: 'relative', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         textAlign: 'left',
-        background: '#0c1320',
-        border: `1px solid ${hasActivity ? `${color}66` : `${color}33`}`,
-        borderRadius: 14,
+        background:
+          'linear-gradient(180deg, #0c1425 0%, #070d1a 100%)',
+        border: `1px solid ${accent}33`,
+        borderRadius: 4,
         cursor: 'pointer', fontFamily: 'inherit',
-        width: '100%', minHeight: 380,
-        ['--nr-color' as never]: color,
+        width: '100%', minHeight: 400,
+        padding: 0,
+        isolation: 'isolate',
+        ['--nr-color' as never]: accent,
         ['--nr-delay' as never]: `${delay}s`,
+        animation: `nr-card-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both`,
+        animationDelay: `${delay}s`,
       }}
     >
-      {/* ═══ ANIMATION BANNER (topo) ═══ */}
+      {/* ═══ HAZARD STRIPE (borda esquerda) ═══ */}
+      <span aria-hidden className="nr-hazard-stripe" style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0, width: 8,
+        background: tier.hazard
+          ? `repeating-linear-gradient(135deg, ${tier.tint} 0 10px, #0a0a0a 10px 20px)`
+          : accent,
+        opacity: tier.hazard ? 0.92 : 0.6,
+        zIndex: 2,
+      }} />
+
+      {/* ═══ PAPEL DE FUNDO (noise + blueprint) ═══ */}
+      <span aria-hidden style={{
+        position: 'absolute', inset: 0, zIndex: 0,
+        backgroundImage: `
+          radial-gradient(ellipse at top left, ${accent}14 0%, transparent 55%),
+          radial-gradient(ellipse at bottom right, ${accent}08 0%, transparent 60%)
+        `,
+      }} />
+      <span aria-hidden style={{
+        position: 'absolute', inset: 0, zIndex: 0, opacity: 0.35,
+        backgroundImage: `
+          linear-gradient(${accent}0f 1px, transparent 1px),
+          linear-gradient(90deg, ${accent}0f 1px, transparent 1px)
+        `,
+        backgroundSize: '22px 22px',
+        maskImage: 'radial-gradient(ellipse at 70% 25%, #000 0%, transparent 70%)',
+        WebkitMaskImage: 'radial-gradient(ellipse at 70% 25%, #000 0%, transparent 70%)',
+      }} />
+
+      {/* ═══ SHIMMER SWEEP ═══ */}
+      <span className="nr-shimmer" aria-hidden style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+        background: `linear-gradient(115deg, transparent 40%, ${accent}22 50%, transparent 60%)`,
+        backgroundSize: '250% 100%',
+      }} />
+
+      {/* ═══ VIEWFINDER BRACKETS ═══ */}
+      <Bracket pos="tr" color={accent} />
+      <Bracket pos="br" color={accent} />
+
+      {/* ═══ META ROW (topo) ═══ */}
       <div style={{
-        position: 'relative',
-        width: '100%', height: 130,
-        background: `linear-gradient(135deg, ${color}1A 0%, ${color}08 50%, transparent 100%)`,
-        borderBottom: `1px solid ${color}22`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        overflow: 'hidden',
+        position: 'relative', zIndex: 3,
+        padding: '14px 18px 0 24px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 10, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '0.18em',
       }}>
-        <div aria-hidden style={{
-          position: 'absolute', inset: 0, opacity: 0.4,
-          backgroundImage: `radial-gradient(${color}22 1px, transparent 1px)`,
-          backgroundSize: '14px 14px',
-        }} />
-        <span className="nr-shimmer" aria-hidden style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: `linear-gradient(115deg, transparent 40%, ${color}33 50%, transparent 60%)`,
-          backgroundSize: '250% 100%',
-        }} />
-        <div style={{ position: 'relative', zIndex: 2 }}>
-          <NRAnimation nrId={nr.id} color={color} size={88} />
-        </div>
-        <div style={{ position: 'absolute', top: 10, right: 12, zIndex: 3 }}>
-          <RelevanceBadge relevance={nr.relevance} />
-        </div>
-        <div style={{ position: 'absolute', top: 10, left: 12, zIndex: 3 }}>
-          <span className="nr-code" style={{
-            fontSize: 12, fontWeight: 800, color,
-            fontFamily: "'JetBrains Mono', monospace",
-            textShadow: `0 0 12px ${color}88`,
-            padding: '3px 8px', borderRadius: 6,
-            background: `${color}1A`, border: `1px solid ${color}55`,
-          }}>
-            {nr.code}
-          </span>
-        </div>
-        {/* Badge de completude no canto inferior direito do banner */}
-        {p?.completed && (
-          <div style={{
-            position: 'absolute', bottom: 8, right: 12, zIndex: 3,
-            background: '#4ade8022', border: '1px solid #4ade8066',
-            borderRadius: 6, padding: '2px 8px',
-            fontSize: 10, fontWeight: 700, color: '#4ade80',
-            display: 'flex', alignItems: 'center', gap: 4,
-          }}>
-            <CheckCircle2 size={10} /> Completa
-          </div>
-        )}
+        <span style={{ color: `${accent}cc` }}>
+          DOSSIÊ №{dossierNum}
+        </span>
+        <span style={{ color: '#475569' }}>·</span>
+        <span style={{
+          color: tier.tint,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+        }}>
+          <span aria-hidden>{tier.glyph}</span>
+          {tier.label}
+        </span>
+        <span style={{ flex: 1 }} />
+        <span style={{
+          color: '#475569',
+          fontSize: 9,
+        }}>
+          {tier.short}
+        </span>
       </div>
 
-      {/* ═══ CONTEUDO ═══ */}
-      <div style={{ padding: '14px 18px 0', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.35, marginBottom: 8 }}>
+      {/* ═══ HEADER: CODE + ICON ═══ */}
+      <div style={{
+        position: 'relative', zIndex: 3,
+        padding: '18px 18px 10px 24px',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto',
+        alignItems: 'center',
+        gap: 12,
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <div className="nr-code-xl" style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 38, fontWeight: 800,
+            color: '#f1f5f9',
+            lineHeight: 1, letterSpacing: '-0.02em',
+            textShadow: `0 0 24px ${accent}40`,
+            display: 'inline-block',
+          }}>
+            {nr.code}
+          </div>
+        </div>
+
+        <div style={{
+          position: 'relative',
+          width: 76, height: 76,
+          borderRadius: 6,
+          background: `radial-gradient(circle at 40% 35%, ${accent}18 0%, ${accent}04 60%, transparent 100%)`,
+          border: `1px solid ${accent}33`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}>
+          {/* crosshair lines (instrument panel feel) */}
+          <span aria-hidden style={{
+            position: 'absolute', left: 0, right: 0, top: '50%', height: 1,
+            background: `${accent}22`,
+          }} />
+          <span aria-hidden style={{
+            position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1,
+            background: `${accent}22`,
+          }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <NRAnimation nrId={nr.id} color={accent} size={58} />
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ ACCENT RULE ═══ */}
+      <div style={{
+        position: 'relative', zIndex: 3,
+        margin: '4px 18px 0 24px',
+        height: 2,
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <span style={{ flex: 1, height: 1, background: `${accent}55` }} />
+        <span style={{ width: 4, height: 4, background: accent, borderRadius: 1 }} />
+        <span style={{ width: 18, height: 1, background: `${accent}22` }} />
+      </div>
+
+      {/* ═══ TITLE + RATIONALE ═══ */}
+      <div style={{
+        position: 'relative', zIndex: 3,
+        padding: '14px 20px 12px 24px',
+        flex: 1,
+        display: 'flex', flexDirection: 'column', gap: 10,
+      }}>
+        <h3 style={{
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontSize: 14, fontWeight: 700,
+          color: '#e2e8f0',
+          lineHeight: 1.3,
+          letterSpacing: '0.01em',
+          textTransform: 'uppercase',
+        }}>
           {nr.title}
         </h3>
+
         {nr.rationale && (
-          <p style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, fontStyle: 'italic', flex: 1 }}>
+          <p style={{
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontSize: 12, fontWeight: 500,
+            color: '#94a3b8',
+            lineHeight: 1.55,
+            fontStyle: 'italic',
+            position: 'relative',
+            paddingLeft: 10,
+            borderLeft: `2px solid ${accent}33`,
+          }}>
             {nr.rationale}
           </p>
         )}
       </div>
 
-      {/* ═══ FOOTER DE PROGRESSO DO ALUNO ═══ */}
+      {/* ═══ PERFORATION DIVIDER ═══ */}
+      <div aria-hidden style={{
+        position: 'relative', zIndex: 3,
+        margin: '0 20px 0 24px',
+        height: 1,
+        backgroundImage: `repeating-linear-gradient(90deg, ${accent}44 0 4px, transparent 4px 9px)`,
+        backgroundSize: '9px 1px',
+      }} />
+
+      {/* ═══ FOOTER DE PROGRESSO ═══ */}
       <div style={{
-        padding: '10px 18px 14px',
-        borderTop: '1px solid rgba(100,116,139,0.15)',
+        position: 'relative', zIndex: 3,
+        padding: '12px 20px 14px 24px',
       }}>
-        {/* Dificuldades */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
-          <DiffBadge icon={Sprout} label="Fácil" count={p?.easierCount || 0} color="#22c55e" />
-          <DiffBadge icon={Mountain} label="Médio" count={p?.sameCount || 0} color="#eab308" />
-          <DiffBadge icon={Flame} label="Forte" count={p?.harderCount || 0} color="#f97316" />
+        {/* Barras de dificuldade — mini bar graph */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+          gap: 10, marginBottom: 10,
+        }}>
+          <DiffBar icon={Sprout} label="FÁCIL"  count={p?.easierCount || 0} max={maxDiffCount} color="#4ade80" />
+          <DiffBar icon={Mountain} label="MÉDIO"  count={p?.sameCount   || 0} max={maxDiffCount} color="#facc15" />
+          <DiffBar icon={Flame}   label="FORTE"  count={p?.harderCount || 0} max={maxDiffCount} color="#fb923c" />
         </div>
 
-        {/* Checklist */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginBottom: 10 }}>
-          <ProgressCheck done={p?.exerciseDone} label="Exercício" />
-          <ProgressCheck done={p?.labInteracted} label="Lab" icon={FlaskConical} />
-          <ProgressCheck done={(p?.sectionsViewed || 0) >= 6} label="6 seções" icon={BookOpen} />
-          <ProgressCheck done={(p?.termsClicked || 0) > 0} label={`${p?.termsClicked || 0} termos`} />
+        {/* Chips de checklist */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 4,
+          marginBottom: 12,
+        }}>
+          <Chip done={p?.exerciseDone} label="EX" />
+          <Chip done={p?.labInteracted} label="LAB" />
+          <Chip done={(p?.sectionsViewed || 0) >= 6} label="6·SEC" />
+          <Chip done={(p?.termsClicked || 0) > 0} label={`${p?.termsClicked || 0}·TRM`} />
         </div>
 
         {/* CTA + PlayButton */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 10,
         }}>
           <div style={{
-            fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.8,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, fontWeight: 700,
+            color: accent,
+            textTransform: 'uppercase', letterSpacing: '0.14em',
           }}>
-            {hasActivity ? 'Continuar aula →' : 'Abrir aula adaptativa →'}
+            <ArrowUpRight size={13} strokeWidth={2.5} className="nr-cta-arrow" />
+            {hasActivity ? 'Continuar dossiê' : 'Abrir dossiê'}
           </div>
           <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
             <PlayButton text={`${nr.code}. ${nr.title}. ${nr.rationale || ''}`} size={12} />
           </div>
         </div>
       </div>
+
+      {/* ═══ STAMP "INSPECIONADO" (quando completo) ═══ */}
+      {p?.completed && (
+        <span aria-label="Dossiê completo" className="nr-stamp" style={{
+          position: 'absolute', top: 58, right: -18,
+          zIndex: 4, pointerEvents: 'none',
+          padding: '6px 22px',
+          fontFamily: "'Caveat', cursive",
+          fontSize: 26, fontWeight: 700,
+          color: '#4ade80',
+          border: '2px solid #4ade80',
+          borderRadius: 4,
+          transform: 'rotate(-10deg)',
+          background: 'rgba(74,222,128,0.06)',
+          textShadow: '0 0 4px rgba(74,222,128,0.4)',
+          letterSpacing: '0.04em',
+          boxShadow: '0 0 0 2px rgba(74,222,128,0.12)',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <CheckCircle2 size={16} strokeWidth={2.5} />
+          Inspecionado
+        </span>
+      )}
     </button>
   )
 }
 
-function DiffBadge({ icon: Icon, label, count, color }: {
+/* ─────────────── helpers ─────────────── */
+
+function Bracket({ pos, color }: { pos: 'tl' | 'tr' | 'bl' | 'br'; color: string }) {
+  const size = 12
+  const thickness = 1.5
+  const common: React.CSSProperties = {
+    position: 'absolute', width: size, height: size,
+    pointerEvents: 'none', zIndex: 2,
+    borderColor: `${color}88`,
+    borderStyle: 'solid',
+    borderWidth: 0,
+  }
+  const styles: Record<string, React.CSSProperties> = {
+    tl: { ...common, top: 6, left: 14, borderTopWidth: thickness, borderLeftWidth: thickness },
+    tr: { ...common, top: 6, right: 6, borderTopWidth: thickness, borderRightWidth: thickness },
+    bl: { ...common, bottom: 6, left: 14, borderBottomWidth: thickness, borderLeftWidth: thickness },
+    br: { ...common, bottom: 6, right: 6, borderBottomWidth: thickness, borderRightWidth: thickness },
+  }
+  return <span aria-hidden style={styles[pos]} />
+}
+
+function DiffBar({ icon: Icon, label, count, max, color }: {
   icon: React.ComponentType<{ size?: number }>
   label: string
   count: number
+  max: number
   color: string
 }) {
   const active = count > 0
+  const pct = Math.min(1, count / max)
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 4,
-      opacity: active ? 1 : 0.3,
-      transition: 'opacity 0.2s',
+      display: 'flex', flexDirection: 'column', gap: 4,
+      opacity: active ? 1 : 0.35,
     }}>
-      <Icon size={12} />
-      <span style={{
-        fontSize: 10, fontWeight: 700, color: active ? color : '#475569',
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 4,
         fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 9, fontWeight: 600,
+        letterSpacing: '0.1em',
+        color: active ? color : '#475569',
       }}>
-        {count}
-      </span>
-      <span style={{ fontSize: 9, color: '#64748b' }}>{label}</span>
+        <Icon size={10} />
+        <span>{label}</span>
+        <span style={{ flex: 1 }} />
+        <span style={{ color: active ? '#e2e8f0' : '#475569' }}>
+          {String(count).padStart(2, '0')}
+        </span>
+      </div>
+      <div style={{
+        height: 3, borderRadius: 1,
+        background: `${color}1a`,
+        overflow: 'hidden',
+        position: 'relative',
+      }}>
+        <span style={{
+          position: 'absolute', top: 0, left: 0, bottom: 0,
+          width: `${pct * 100}%`,
+          background: color,
+          boxShadow: active ? `0 0 6px ${color}66` : 'none',
+          transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+        }} />
+      </div>
     </div>
   )
 }
 
-function ProgressCheck({ done, label, icon: Icon }: {
-  done?: boolean
-  label: string
-  icon?: React.ComponentType<{ size?: number }>
-}) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 3,
-      fontSize: 10, color: done ? '#4ade80' : '#475569',
-      fontWeight: done ? 600 : 400,
-    }}>
-      {Icon ? <Icon size={10} /> : <span>{done ? '✓' : '✗'}</span>}
-      <span>{label}</span>
-    </div>
-  )
-}
-
-function RelevanceBadge({ relevance }: { relevance: number }) {
-  const colors: Record<number, { bg: string; fg: string }> = {
-    5: { bg: 'rgba(239,68,68,0.15)', fg: '#fca5a5' },
-    4: { bg: 'rgba(249,115,22,0.15)', fg: '#fdba74' },
-    3: { bg: 'rgba(34,197,94,0.15)', fg: '#86efac' },
-    2: { bg: 'rgba(100,116,139,0.15)', fg: '#94a3b8' },
-    1: { bg: 'rgba(100,116,139,0.10)', fg: '#64748b' },
-    0: { bg: 'rgba(100,116,139,0.05)', fg: '#475569' },
-  }
-  const c = colors[relevance] || colors[0]
+function Chip({ done, label }: { done?: boolean; label: string }) {
   return (
     <span style={{
-      fontSize: 10, fontWeight: 700,
-      padding: '3px 8px', borderRadius: 999,
-      background: c.bg, color: c.fg,
-      textTransform: 'uppercase', letterSpacing: 0.5,
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '3px 6px',
+      fontFamily: "'JetBrains Mono', monospace",
+      fontSize: 9, fontWeight: 600,
+      letterSpacing: '0.1em',
+      color: done ? '#4ade80' : '#475569',
+      border: `1px solid ${done ? 'rgba(74,222,128,0.4)' : 'rgba(71,85,105,0.3)'}`,
+      borderRadius: 2,
+      background: done ? 'rgba(74,222,128,0.06)' : 'transparent',
     }}>
-      {RELEVANCE_LABEL[relevance]}
+      <span aria-hidden style={{ opacity: done ? 1 : 0.4 }}>
+        {done ? '✓' : '·'}
+      </span>
+      {label}
     </span>
   )
 }
