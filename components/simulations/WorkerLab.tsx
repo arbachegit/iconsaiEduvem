@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { Bot, AlertTriangle, ShieldCheck, Heart } from 'lucide-react'
+import { Bot, AlertTriangle, ShieldCheck, Heart, X, Lightbulb } from 'lucide-react'
 import PlayButton from '../education/PlayButton'
 import WorkerSVG, { type WorkerProps, type WorkerRisks } from './WorkerSVG'
 import { EpiIcon, EPI_LABELS, type EpiType } from './EpiIcons'
@@ -9,11 +9,9 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { trackEvent } from '@/lib/track-event'
 
 /* ═══════════════════════════════════════════════════════════
-   WorkerLab — laboratorio interativo com BOTOES TOGGLE DE EPI.
-
-   Em vez de slider linear, o aluno escolhe QUAIS EPIs/medidas
-   de protecao ativar. Começa tudo desligado (estado "sem EPI").
-   Cada toggle muda o trabalhador SVG, as stats e o Ella.
+   WorkerLab — painel de controle PCMAT.
+   Arquitetura: main (SVG + EPI toggle) + aside (stats + Ella).
+   Mobile colapsa em coluna via regras em globals.css.
    ═══════════════════════════════════════════════════════════ */
 
 export type RiskGrade = 'Baixo' | 'Médio' | 'Alto' | 'Crítico'
@@ -21,11 +19,8 @@ export type RiskGrade = 'Baixo' | 'Médio' | 'Alto' | 'Crítico'
 export interface ProtectionItem {
   id: EpiType
   label: string
-  /** Nome completo do equipamento (ex: "Capacete classe B com jugular") */
   fullName?: string
-  /** Por que esse item importa — 1 frase (ex: "Protege contra impacto de objetos em queda") */
   description?: string
-  /** Norma de referencia (ex: "NR-6, Anexo I") */
   normRef?: string
   workerProp?: keyof Pick<WorkerProps, 'helmet' | 'gloves' | 'boots' | 'harness' | 'mask' | 'goggles' | 'earProtection' | 'apron'>
   risksRemoved?: (keyof WorkerRisks)[]
@@ -38,25 +33,19 @@ export interface ProtectionItem {
 }
 
 export interface WorkerLabConfig {
-  sliderLabel?: string           // legado, ignorado na nova UI
-  sliderTicks?: string[]         // legado, ignorado
+  sliderLabel?: string
+  sliderTicks?: string[]
   defaultBackground?: WorkerProps['backgroundHint']
-  /** NOVO: itens de protecao disponiveis como botoes toggle */
   items?: ProtectionItem[]
-  /** Base stats quando ZERO itens selecionados */
   baseStats?: {
     riskFatal: number
     compliance: number
     fineEstimate: number
     lifeExpectancy: number
   }
-  /** Riscos visuais quando ZERO protecao */
   baseRisks?: WorkerRisks
-  /** Ella quando zero protecao */
   tutorEmpty?: string
-  /** Ella quando tudo selecionado */
   tutorFull?: string
-  /** LEGADO: levels (backward compat — converte pra items on the fly) */
   levels?: Array<{
     label: string
     worker: Partial<WorkerProps>
@@ -77,6 +66,8 @@ export interface WorkerLabConfig {
 }
 
 const ACCENT = '#22d3ee'
+const HAZARD_RED = '#ef4444'
+const HAZARD_GREEN = '#4ade80'
 
 const RISK_GRADE = (risk: number): RiskGrade =>
   risk >= 60 ? 'Crítico' : risk >= 35 ? 'Alto' : risk >= 15 ? 'Médio' : 'Baixo'
@@ -88,12 +79,10 @@ const RISK_COLOR: Record<RiskGrade, string> = {
   'Crítico': '#ef4444',
 }
 
-/** Gera items default a partir dos levels legados */
 function itemsFromLevels(config: WorkerLabConfig): ProtectionItem[] {
   const levels = config.levels
   if (!levels || levels.length < 4) return []
 
-  // Detecta quais equipamentos aparecem nas progressoes
   const allProps: Array<keyof Pick<WorkerProps, 'helmet' | 'gloves' | 'boots' | 'harness' | 'mask' | 'goggles' | 'earProtection' | 'apron'>> =
     ['helmet', 'gloves', 'boots', 'harness', 'mask', 'goggles', 'earProtection', 'apron']
 
@@ -145,7 +134,6 @@ function itemsFromLevels(config: WorkerLabConfig): ProtectionItem[] {
 }
 
 export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; nrId?: number }) {
-  // Converte levels legados pra items se necessario
   const items = useMemo(() => config.items || itemsFromLevels(config), [config])
 
   const baseStats = config.baseStats || {
@@ -183,7 +171,6 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
     setLastAction(null)
   }, [])
 
-  // Calcula stats a partir da selecao
   const stats = useMemo(() => {
     const selectedItems = items.filter(it => selected.has(it.id))
     const riskFatal = Math.max(2, baseStats.riskFatal - selectedItems.reduce((s, it) => s + it.riskReduction, 0))
@@ -194,19 +181,16 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
     return { riskFatal, compliance, fineEstimate, lifeExpectancy, riskGrade }
   }, [selected, items, baseStats])
 
-  // Worker props a partir da selecao
   const workerProps = useMemo(() => {
     const w: Partial<WorkerProps> = {
       mood: Math.min(1, selected.size / Math.max(1, items.length)),
       backgroundHint: config.defaultBackground || 'scaffold',
     }
-    // EPIs
     for (const item of items) {
       if (selected.has(item.id) && item.workerProp) {
         (w as Record<string, unknown>)[item.workerProp] = true
       }
     }
-    // Riscos: comeca com todos os base, remove os cobertos por items selecionados
     const risks = { ...baseRisks } as Record<string, boolean>
     for (const item of items) {
       if (selected.has(item.id) && item.risksRemoved) {
@@ -217,7 +201,6 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
     return w
   }, [selected, items, config.defaultBackground, baseRisks])
 
-  // Ella: reage a ultima acao ou estado geral
   const tutorText = useMemo(() => {
     if (selected.size === 0) {
       return config.tutorEmpty || config.levels?.[0]?.tutor?.headline || 'Sem proteção. Arraste pra ativar.'
@@ -245,14 +228,11 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
     return ''
   }, [selected, items, lastAction, config])
 
-  // WARNING — sempre ativo quando ha risco. Prioriza config, fallback dinamico.
   const tutorWarning = useMemo(() => {
     const levelIdx = Math.min(3, Math.round((selected.size / Math.max(1, items.length)) * 3))
     const configWarning = config.levels?.[levelIdx]?.tutor?.warning
-
     if (configWarning) return configWarning
 
-    // Geracao dinamica baseada no estado
     if (stats.riskFatal >= 70) {
       return `Risco fatal em ${stats.riskFatal}%. Cada minuto sem proteção é roleta russa. Não é exagero — é estatística.`
     }
@@ -269,14 +249,11 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
     return ''
   }, [selected, items, config, stats])
 
-  // SUGGESTION — sempre ativo. Guia o proximo passo do aluno.
   const tutorSuggestion = useMemo(() => {
     const levelIdx = Math.min(3, Math.round((selected.size / Math.max(1, items.length)) * 3))
     const configSuggestion = config.levels?.[levelIdx]?.tutor?.suggestion
-
     if (configSuggestion) return configSuggestion
 
-    // Geracao dinamica
     if (selected.size === 0) {
       const first = items[0]
       return first ? `Começa pelo ${first.label} — é o item mais básico. Clica e vê o que muda.` : ''
@@ -284,7 +261,6 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
     if (selected.size === items.length) {
       return 'Agora faz o contrário: tira um por um e observa qual item faz mais diferença nos números. Isso é análise de risco na prática.'
     }
-    // Sugere o proximo item mais impactante (maior riskReduction) que ainda nao foi selecionado
     const missing = items
       .filter(it => !selected.has(it.id))
       .sort((a, b) => b.riskReduction - a.riskReduction)
@@ -299,196 +275,479 @@ export default function WorkerLab({ config, nrId }: { config: WorkerLabConfig; n
   const compColor = stats.compliance >= 80 ? '#4ade80' : stats.compliance >= 40 ? '#fbbf24' : '#ef4444'
   const fullTutorText = [tutorText, tutorDetail, tutorWarning, tutorSuggestion].filter(Boolean).join(' ')
 
+  const zeroSelected = selected.size === 0
+  const allSelected = selected.size === items.length && items.length > 0
+  const statusTint = zeroSelected ? HAZARD_RED : allSelected ? HAZARD_GREEN : ACCENT
+  const labNumber = nrId ? String(nrId).padStart(3, '0') : '---'
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {/* Título + PCMAT */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '6px 4px',
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>
-          Escolha um equipamento para atender o <span title="Programa de Condições e Meio Ambiente de Trabalho" style={{ color: '#22d3ee', cursor: 'help', borderBottom: '1px dotted #22d3ee' }}>PCMAT</span>
+    <div className="worker-lab-container">
+      {/* ═══════════ MAIN PANEL ═══════════ */}
+      <section className="worker-lab-main">
+        {/* ─── META ROW ─── */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 10, fontWeight: 600,
+          textTransform: 'uppercase', letterSpacing: '0.18em',
+          color: '#64748b',
+        }}>
+          <span style={{ width: 20, height: 1, background: statusTint, opacity: 0.7 }} />
+          <span>PAINEL PCMAT</span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span style={{ color: `${statusTint}cc` }}>LAB·N°{labNumber}</span>
+          <span style={{ flex: 1 }} />
+          {selected.size > 0 && (
+            <button onClick={clearAll} style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 9, fontWeight: 700,
+              color: HAZARD_RED, background: `${HAZARD_RED}0f`,
+              border: `1px solid ${HAZARD_RED}44`,
+              borderRadius: 3, padding: '3px 8px',
+              cursor: 'pointer', letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+              <X size={10} strokeWidth={2.5} />
+              Reset
+            </button>
+          )}
         </div>
-        {selected.size > 0 && (
-          <button onClick={clearAll} style={{
-            fontSize: 10, color: '#ef4444', background: 'none',
-            border: '1px solid #ef444444', borderRadius: 6,
-            padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
-          }}>Tirar todos</button>
-        )}
-      </div>
 
-      {/* Badge de status */}
-      <div style={{ textAlign: 'center', fontSize: 10, color: '#64748b', padding: '2px 0' }}>
-        {selected.size === 0 ? 'Selecione os EPIs necessários' :
-         selected.size === items.length ? '✓ Proteção completa' :
-         `${selected.size} de ${items.length} itens ativos`}
-      </div>
-
-      {/* SVG do trabalhador — FULL WIDTH + modal onboarding sobreposto */}
-      <div style={{
-        background: '#080c14', border: '1px solid #1e293b', borderRadius: 6,
-        padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        minHeight: 280, position: 'relative',
-      }}>
-        <WorkerSVG
-          mood={workerProps.mood ?? 0}
-          helmet={workerProps.helmet}
-          gloves={workerProps.gloves}
-          boots={workerProps.boots}
-          harness={workerProps.harness}
-          mask={workerProps.mask}
-          goggles={workerProps.goggles}
-          earProtection={workerProps.earProtection}
-          apron={workerProps.apron}
-          risks={workerProps.risks}
-          backgroundHint={workerProps.backgroundHint}
+        {/* ─── STATUS BADGE ─── */}
+        <StatusBar
+          selected={selected.size}
+          total={items.length}
+          tint={statusTint}
         />
 
-        {/* Modal onboarding — APENAS sobre o boneco */}
-        {showOnboarding && selected.size === 0 && (
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 10,
-            background: 'rgba(5,10,20,0.88)', borderRadius: 6,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'flex-end',
-          }}>
-            <button
-              onClick={() => setShowOnboarding(false)}
-              style={{
-                position: 'absolute', top: 6, right: 6,
-                width: 26, height: 26, display: 'flex', alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(255,255,255,0.08)',
-                border: '1.5px solid rgba(255,255,255,0.25)',
-                borderRadius: 5, color: '#e2e8f0', cursor: 'pointer',
-                fontSize: 14, fontWeight: 700, lineHeight: 1,
-              }}
-            >✕</button>
-            {/* Texto + seta colados na parte inferior */}
-            <div style={{
-              fontFamily: "'Caveat', cursive",
-              fontSize: isMobile ? 22 : 28, color: '#fff',
-              fontWeight: 700, textAlign: 'center', lineHeight: 1.3,
-              marginBottom: 4,
-            }}>
-              Escolha uma EPI para<br/>ver o que ocorrerá
-            </div>
-            <svg width="36" height="32" viewBox="0 0 36 32" fill="none" style={{ flexShrink: 0, marginBottom: 4 }}>
-              <path d="M 18 2 C 12 6 10 12 14 20 C 16 24 17 26 18 28" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M 14 25 L 18 31 L 22 25" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-        )}
-      </div>
-
-      {/* Botões EPI — ícone + label, horizontal wrap */}
-      <div className="worker-lab-controls" style={{
-        display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center',
-        padding: '4px 0', position: 'relative',
-      }}>
-        {items.map(item => {
-          const isActive = selected.has(item.id)
-          const itemColor = isActive ? ACCENT : '#64748b'
-          const label = EPI_LABELS[item.id as EpiType] || item.label
-          return (
-            <button
-              key={item.id}
-              onClick={() => toggle(item.id)}
-              title={item.fullName || item.label}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                justifyContent: 'center', gap: 2,
-                width: isMobile ? 52 : 64, padding: '6px 2px', borderRadius: 8,
-                border: `2px solid ${isActive ? ACCENT : '#1e293b'}`,
-                background: isActive ? `${ACCENT}15` : '#080c14',
-                cursor: 'pointer', opacity: isActive ? 1 : 0.5,
-                transition: 'all 0.15s',
-                boxShadow: isActive ? `0 0 8px ${ACCENT}33` : 'none',
-                fontFamily: 'inherit',
-              }}
-            >
-              <EpiIcon type={item.id} color={itemColor} size={isMobile ? 20 : 24} />
-              <span style={{
-                fontSize: isMobile ? 9 : 10, color: isActive ? '#e2e8f0' : '#64748b',
-                fontWeight: 600, lineHeight: 1, textAlign: 'center',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                width: '100%',
-              }}>
-                {label}
-              </span>
-            </button>
-          )
-        })}
-
-        {/* overlay movido para position absolute sobre todo o lab */}
-      </div>
-
-      {/* overlay antigo removido */}
-
-      {/* Stat Cards — grid 2 colunas, compacto */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-        <StatCard label="Grau de risco" value={stats.riskGrade} color={RISK_COLOR[stats.riskGrade]} icon={AlertTriangle}/>
-        <StatCard label="Risco acidente" value={`${stats.riskFatal}%`} color={fatalColor} icon={AlertTriangle}/>
-        <StatCard label="Conformidade" value={`${stats.compliance}%`} color={compColor} icon={ShieldCheck}/>
-        <StatCard label="Vida estimada" value={`${stats.lifeExpectancy}a`} color={stats.lifeExpectancy >= 75 ? '#4ade80' : stats.lifeExpectancy >= 68 ? '#fbbf24' : '#ef4444'} icon={Heart}/>
-        <StatCard label="Multa" value={stats.fineEstimate === 0 ? 'R$ 0' : `R$ ${stats.fineEstimate.toLocaleString('pt-BR')}`} color={stats.fineEstimate === 0 ? '#4ade80' : '#ef4444'}/>
-      </div>
-
-      {/* Ella — full width, espaço mínimo */}
-      <div style={{
-        background: '#080c14', border: `1px solid ${ACCENT}44`,
-        borderRadius: 6, padding: '10px 6px', position: 'relative',
-      }}>
-        <div style={{
-          position: 'absolute', top: -10, left: 8, padding: '2px 10px',
-          background: '#0c1320', borderRadius: 9999, border: `1px solid ${ACCENT}44`,
-          fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
-          display: 'flex', alignItems: 'center', gap: 4,
+        {/* ─── SVG PANEL ─── */}
+        <div className="worker-svg-row" style={{
+          position: 'relative',
+          background: 'linear-gradient(180deg, #0a1120 0%, #060b15 100%)',
+          border: `1px solid ${statusTint}33`,
+          borderRadius: 4,
+          minHeight: 280, overflow: 'hidden',
+          padding: 12,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Bot size={10} color={ACCENT} />
-          <span style={{
-            background: 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899, #22d3ee)',
-            backgroundSize: '200% 100%',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            animation: 'gradientShift 3s linear infinite',
-          }}>Ella</span>
+          {/* grid paper background */}
+          <span aria-hidden style={{
+            position: 'absolute', inset: 0, opacity: 0.25,
+            backgroundImage: `
+              linear-gradient(${statusTint}0f 1px, transparent 1px),
+              linear-gradient(90deg, ${statusTint}0f 1px, transparent 1px)
+            `,
+            backgroundSize: '22px 22px',
+            pointerEvents: 'none',
+          }} />
+          {/* hazard stripe left edge */}
+          <span aria-hidden style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0, width: 5,
+            background: zeroSelected
+              ? `repeating-linear-gradient(135deg, ${HAZARD_RED} 0 8px, #0a0a0a 8px 16px)`
+              : allSelected ? HAZARD_GREEN : statusTint,
+            opacity: 0.9, pointerEvents: 'none',
+          }} />
+          {/* viewfinder brackets */}
+          <Bracket pos="tl" color={statusTint} />
+          <Bracket pos="tr" color={statusTint} />
+          <Bracket pos="bl" color={statusTint} />
+          <Bracket pos="br" color={statusTint} />
+
+          <div className="worker-svg-wrapper" style={{ position: 'relative', zIndex: 1, maxWidth: '100%' }}>
+            <WorkerSVG
+              mood={workerProps.mood ?? 0}
+              helmet={workerProps.helmet}
+              gloves={workerProps.gloves}
+              boots={workerProps.boots}
+              harness={workerProps.harness}
+              mask={workerProps.mask}
+              goggles={workerProps.goggles}
+              earProtection={workerProps.earProtection}
+              apron={workerProps.apron}
+              risks={workerProps.risks}
+              backgroundHint={workerProps.backgroundHint}
+            />
+          </div>
+
+          {/* Onboarding overlay */}
+          {showOnboarding && zeroSelected && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 10,
+              background: 'rgba(5,10,20,0.88)',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'flex-end',
+              pointerEvents: 'auto',
+            }}>
+              <button
+                onClick={() => setShowOnboarding(false)}
+                aria-label="Fechar onboarding"
+                style={{
+                  position: 'absolute', top: 8, right: 8,
+                  width: 26, height: 26,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1.5px solid rgba(255,255,255,0.25)',
+                  borderRadius: 4, color: '#e2e8f0', cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <X size={14} strokeWidth={2.5} />
+              </button>
+              <div style={{
+                fontFamily: "'Caveat', cursive",
+                fontSize: isMobile ? 22 : 28, color: '#fff',
+                fontWeight: 700, textAlign: 'center', lineHeight: 1.25,
+                marginBottom: 6, padding: '0 20px',
+              }}>
+                Escolha um EPI<br/>pra ver o que acontece
+              </div>
+              <svg width="36" height="32" viewBox="0 0 36 32" fill="none" style={{ marginBottom: 6 }} aria-hidden>
+                <path d="M 18 2 C 12 6 10 12 14 20 C 16 24 17 26 18 28" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M 14 25 L 18 31 L 22 25" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          )}
         </div>
-        <div style={{ marginTop: 4 }}>
+
+        {/* ─── PERFORATION ─── */}
+        <div aria-hidden style={{
+          height: 1,
+          backgroundImage: `repeating-linear-gradient(90deg, ${statusTint}55 0 4px, transparent 4px 9px)`,
+          backgroundSize: '9px 1px',
+          margin: '2px 0',
+        }} />
+
+        {/* ─── EPI CONTROLS ─── */}
+        <div style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 9, fontWeight: 700,
+          color: '#475569',
+          textTransform: 'uppercase', letterSpacing: '0.2em',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <span>EQUIPAMENTOS</span>
+          <span style={{ flex: 1, height: 1, background: '#1e293b' }} />
+          <span style={{ color: statusTint }}>
+            {String(selected.size).padStart(2, '0')} / {String(items.length).padStart(2, '0')}
+          </span>
+        </div>
+
+        <div className="worker-lab-controls" style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile
+            ? 'repeat(auto-fill, minmax(72px, 1fr))'
+            : 'repeat(auto-fill, minmax(88px, 1fr))',
+          gap: 6,
+        }}>
+          {items.map(item => {
+            const isActive = selected.has(item.id)
+            const label = EPI_LABELS[item.id as EpiType] || item.label
+            return (
+              <button
+                key={item.id}
+                onClick={() => toggle(item.id)}
+                title={item.fullName || item.label}
+                aria-pressed={isActive}
+                style={{
+                  position: 'relative',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: 4,
+                  padding: isMobile ? '8px 4px' : '10px 4px', borderRadius: 4,
+                  border: `1px solid ${isActive ? ACCENT : '#1e293b'}`,
+                  background: isActive ? `${ACCENT}12` : '#080c14',
+                  cursor: 'pointer',
+                  opacity: isActive ? 1 : 0.7,
+                  transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: isActive ? `0 0 0 1px ${ACCENT}, 0 0 20px -4px ${ACCENT}66` : 'none',
+                  fontFamily: 'inherit',
+                  overflow: 'hidden',
+                }}
+              >
+                {isActive && (
+                  <span aria-hidden style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                    background: `linear-gradient(90deg, transparent, ${ACCENT}, transparent)`,
+                  }} />
+                )}
+                <EpiIcon type={item.id} color={isActive ? ACCENT : '#94a3b8'} size={isMobile ? 26 : 32} />
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: isMobile ? 8 : 9,
+                  color: isActive ? '#e2e8f0' : '#64748b',
+                  fontWeight: 600, lineHeight: 1,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  textAlign: 'center',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  width: '100%',
+                }}>
+                  {label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* ═══════════ ASIDE ═══════════ */}
+      <aside className="worker-lab-aside">
+        {/* ─── STATS PANEL ─── */}
+        <div style={{
+          background: 'linear-gradient(180deg, #0a1120 0%, #060b15 100%)',
+          border: '1px solid #1e293b', borderRadius: 4,
+          padding: '12px 14px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 9, fontWeight: 700,
+            color: '#64748b',
+            textTransform: 'uppercase', letterSpacing: '0.22em',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span>INDICADORES</span>
+            <span style={{ flex: 1, height: 1, background: '#1e293b' }} />
+            <span style={{ color: statusTint }}>LIVE</span>
+          </div>
+
+          <StatRow label="Grau de risco" value={stats.riskGrade} color={RISK_COLOR[stats.riskGrade]} icon={AlertTriangle} />
+          <StatRow label="Risco fatal"   value={`${stats.riskFatal}%`} color={fatalColor} icon={AlertTriangle} bar={stats.riskFatal} barMax={100} />
+          <StatRow label="Conformidade"  value={`${stats.compliance}%`} color={compColor} icon={ShieldCheck} bar={stats.compliance} barMax={100} />
+          <StatRow label="Vida estimada" value={`${stats.lifeExpectancy} a`} color={stats.lifeExpectancy >= 75 ? '#4ade80' : stats.lifeExpectancy >= 68 ? '#fbbf24' : '#ef4444'} icon={Heart} />
+          <StatRow label="Multa MTE"     value={stats.fineEstimate === 0 ? 'R$ 0' : `R$ ${stats.fineEstimate.toLocaleString('pt-BR')}`} color={stats.fineEstimate === 0 ? '#4ade80' : '#ef4444'} />
+        </div>
+
+        {/* ─── ELLA PANEL ─── */}
+        <div style={{
+          position: 'relative',
+          background: 'linear-gradient(180deg, #0a1120 0%, #060b15 100%)',
+          border: `1px solid ${ACCENT}44`, borderRadius: 4,
+          padding: '14px 14px 12px',
+          overflow: 'hidden',
+        }}>
+          <span aria-hidden style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+            background: `linear-gradient(90deg, ${ACCENT}, #a855f7, #ec4899, ${ACCENT})`,
+            backgroundSize: '200% 100%',
+            animation: 'gradientShift 3s linear infinite',
+          }} />
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 9, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.22em',
+            marginBottom: 10,
+          }}>
+            <Bot size={11} color={ACCENT} />
+            <span style={{
+              background: 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899, #22d3ee)',
+              backgroundSize: '200% 100%',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              animation: 'gradientShift 3s linear infinite',
+            }}>
+              Ella · Tutor IA
+            </span>
+            <span style={{ flex: 1, height: 1, background: `${ACCENT}22` }} />
+            <span style={{ color: '#475569' }}>LIVE</span>
+          </div>
+
           <div key={`${selected.size}-${lastAction?.id}`} className="fadeIn"
-            style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3, marginBottom: 4 }}>
+            style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 14, fontWeight: 700, color: '#e2e8f0',
+              lineHeight: 1.35, marginBottom: tutorDetail ? 8 : 0,
+            }}>
             <TutorTextWithCitations text={tutorText} />
           </div>
+
           {tutorDetail && (
-            <div style={{ fontSize: 13, lineHeight: 1.6, color: '#cbd5e1' }}>
+            <div style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 13, lineHeight: 1.55, color: '#cbd5e1',
+              marginBottom: tutorWarning || tutorSuggestion ? 10 : 0,
+            }}>
               <TutorTextWithCitations text={tutorDetail} />
             </div>
           )}
+
           {tutorWarning && (
             <div style={{
-              marginTop: 6, padding: '6px 8px',
-              background: 'rgba(249,115,22,0.10)', border: '1px solid rgba(249,115,22,0.3)',
-              borderRadius: 6, fontSize: 12, color: '#fbbf24', lineHeight: 1.4,
-              display: 'flex', alignItems: 'flex-start', gap: 6,
+              position: 'relative',
+              marginTop: 8, padding: '8px 10px 8px 14px',
+              background: 'rgba(249,115,22,0.08)',
+              border: '1px solid rgba(249,115,22,0.3)',
+              borderRadius: 3,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 12, color: '#fbbf24', lineHeight: 1.5,
+              display: 'flex', alignItems: 'flex-start', gap: 8,
             }}>
-              <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span><strong>Cuidado:</strong> <TutorTextWithCitations text={tutorWarning} /></span>
+              <span aria-hidden style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
+                background: 'repeating-linear-gradient(135deg, #f97316 0 6px, #0a0a0a 6px 12px)',
+              }} />
+              <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong style={{
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
+                  textTransform: 'uppercase', letterSpacing: '0.15em',
+                  color: '#f97316', display: 'block', marginBottom: 2,
+                }}>ALERTA</strong>
+                <TutorTextWithCitations text={tutorWarning} />
+              </div>
             </div>
           )}
+
           {tutorSuggestion && (
             <div style={{
-              marginTop: 6, padding: '6px 8px',
-              background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.2)',
-              borderRadius: 6, fontSize: 12, color: '#94a3b8', lineHeight: 1.4, fontStyle: 'italic',
+              marginTop: 8, padding: '8px 10px 8px 14px',
+              position: 'relative',
+              background: 'rgba(34,211,238,0.05)',
+              border: `1px solid ${ACCENT}33`,
+              borderRadius: 3,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 12, color: '#cbd5e1', lineHeight: 1.5,
+              display: 'flex', alignItems: 'flex-start', gap: 8,
             }}>
-              <strong style={{ color: ACCENT, fontStyle: 'normal' }}>↗ Tenta isso:</strong> <TutorTextWithCitations text={tutorSuggestion} />
+              <span aria-hidden style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
+                background: ACCENT, opacity: 0.7,
+              }} />
+              <Lightbulb size={13} color={ACCENT} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong style={{
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
+                  textTransform: 'uppercase', letterSpacing: '0.15em',
+                  color: ACCENT, display: 'block', marginBottom: 2,
+                }}>PRÓXIMO PASSO</strong>
+                <TutorTextWithCitations text={tutorSuggestion} />
+              </div>
             </div>
           )}
-          <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
+
+          <div style={{
+            marginTop: 10, paddingTop: 8,
+            borderTop: `1px dashed ${ACCENT}22`,
+            display: 'flex', justifyContent: 'flex-end',
+          }}>
             <PlayButton text={fullTutorText} size={12} />
           </div>
         </div>
+      </aside>
+    </div>
+  )
+}
+
+/* ─────────────── helpers ─────────────── */
+
+function StatusBar({ selected, total, tint }: { selected: number; total: number; tint: string }) {
+  const pct = total > 0 ? selected / total : 0
+  const label = selected === 0 ? 'SEM PROTEÇÃO ATIVA' :
+    selected === total ? 'PROTEÇÃO COMPLETA · PCMAT CONFORME' :
+    `${selected} DE ${total} EPIS ATIVOS · AUDITORIA INCOMPLETA`
+
+  return (
+    <div style={{
+      position: 'relative',
+      padding: '6px 10px',
+      background: `${tint}0d`,
+      border: `1px solid ${tint}33`,
+      borderRadius: 3,
+      overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+      fontFamily: "'JetBrains Mono', monospace",
+      fontSize: 10, fontWeight: 700,
+      color: tint, letterSpacing: '0.14em', textTransform: 'uppercase',
+    }}>
+      <span aria-hidden style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0,
+        width: `${pct * 100}%`,
+        background: `${tint}14`,
+        transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+      }} />
+      <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span style={{
+          width: 8, height: 8, borderRadius: '50%',
+          background: tint, boxShadow: `0 0 10px ${tint}`,
+          animation: 'pulse 1.6s ease-in-out infinite',
+        }} />
+        {label}
+      </span>
+      <span style={{ position: 'relative', zIndex: 1, color: `${tint}cc` }}>
+        {Math.round(pct * 100)}%
+      </span>
+    </div>
+  )
+}
+
+function Bracket({ pos, color }: { pos: 'tl' | 'tr' | 'bl' | 'br'; color: string }) {
+  const size = 12
+  const thickness = 1.5
+  const common: React.CSSProperties = {
+    position: 'absolute', width: size, height: size,
+    pointerEvents: 'none', zIndex: 2,
+    borderColor: `${color}99`,
+    borderStyle: 'solid',
+    borderWidth: 0,
+  }
+  const styles: Record<string, React.CSSProperties> = {
+    tl: { ...common, top: 4, left: 4, borderTopWidth: thickness, borderLeftWidth: thickness },
+    tr: { ...common, top: 4, right: 4, borderTopWidth: thickness, borderRightWidth: thickness },
+    bl: { ...common, bottom: 4, left: 4, borderBottomWidth: thickness, borderLeftWidth: thickness },
+    br: { ...common, bottom: 4, right: 4, borderBottomWidth: thickness, borderRightWidth: thickness },
+  }
+  return <span aria-hidden style={styles[pos]} />
+}
+
+function StatRow({ label, value, color, icon: Icon, bar, barMax }: {
+  label: string; value: string; color: string
+  icon?: React.ComponentType<{ size?: number; color?: string }>
+  bar?: number; barMax?: number
+}) {
+  const barPct = bar !== undefined && barMax ? Math.min(1, bar / barMax) : 0
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {Icon && (
+          <div style={{
+            width: 22, height: 22, borderRadius: 3,
+            background: `${color}14`, border: `1px solid ${color}44`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Icon size={12} color={color} />
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 9, color: '#64748b', fontWeight: 600,
+            textTransform: 'uppercase', letterSpacing: '0.12em',
+          }}>{label}</div>
+        </div>
+        <div style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 14, fontWeight: 700, color,
+          lineHeight: 1,
+        }}>{value}</div>
       </div>
+      {bar !== undefined && barMax && (
+        <div style={{
+          height: 3, borderRadius: 1,
+          background: `${color}15`,
+          overflow: 'hidden', marginLeft: 30,
+        }}>
+          <span style={{
+            display: 'block',
+            height: '100%',
+            width: `${barPct * 100}%`,
+            background: color,
+            boxShadow: `0 0 8px ${color}66`,
+            transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -525,7 +784,6 @@ function TutorTextWithCitations({ text }: { text: string }) {
     setLoading(false)
   }
 
-  // Split text por citações [NR-X, ...]
   const parts = text.split(/(\[NR-\d+[^\]]*\])/g)
 
   return (
@@ -539,7 +797,7 @@ function TutorTextWithCitations({ text }: { text: string }) {
               onClick={(e) => { e.stopPropagation(); openCitation(match[1]) }}
               style={{
                 display: 'inline', padding: '1px 6px', margin: '0 2px',
-                borderRadius: 4, border: `1px solid ${ACCENT}44`,
+                borderRadius: 3, border: `1px solid ${ACCENT}44`,
                 background: `${ACCENT}15`, color: ACCENT,
                 fontSize: 'inherit', fontFamily: "'JetBrains Mono', monospace",
                 fontWeight: 600, cursor: 'pointer',
@@ -555,7 +813,6 @@ function TutorTextWithCitations({ text }: { text: string }) {
         return <span key={i}>{part}</span>
       })}
 
-      {/* Modal de citação */}
       {modalTerm && (
         <div
           onClick={() => setModalTerm(null)}
@@ -570,34 +827,46 @@ function TutorTextWithCitations({ text }: { text: string }) {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: '#0c1320', border: `1px solid ${ACCENT}55`,
-              borderRadius: 14, padding: '24px 28px',
+              borderRadius: 6, padding: '24px 28px',
               maxWidth: 560, width: '100%', maxHeight: '70vh', overflowY: 'auto',
             }}
           >
             <div style={{
-              fontSize: 11, fontWeight: 700, color: ACCENT,
-              textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10, fontWeight: 700, color: ACCENT,
+              textTransform: 'uppercase', letterSpacing: '0.22em', marginBottom: 10,
             }}>
-              Referência normativa
+              REFERÊNCIA NORMATIVA
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#e2e8f0', marginBottom: 16 }}>
+            <h3 style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 22, fontWeight: 700, color: '#e2e8f0', marginBottom: 16,
+              letterSpacing: '-0.01em',
+            }}>
               {modalTerm}
             </h3>
             {loading && (
-              <div style={{ color: '#64748b', fontSize: 14 }}>Buscando explicação...</div>
+              <div style={{
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                color: '#64748b', fontSize: 14,
+              }}>Buscando explicação...</div>
             )}
             {modalContent && (
-              <div style={{ fontSize: 14, lineHeight: 1.7, color: '#cbd5e1', whiteSpace: 'pre-wrap' }}>
+              <div style={{
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontSize: 14, lineHeight: 1.7, color: '#cbd5e1', whiteSpace: 'pre-wrap',
+              }}>
                 {modalContent}
               </div>
             )}
             <button
               onClick={() => setModalTerm(null)}
               style={{
-                marginTop: 20, padding: '8px 20px', borderRadius: 8,
+                marginTop: 20, padding: '8px 20px', borderRadius: 4,
                 border: `1px solid ${ACCENT}`, background: 'transparent',
                 color: ACCENT, fontWeight: 700, fontSize: 13,
-                cursor: 'pointer', fontFamily: 'inherit',
+                cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.12em', textTransform: 'uppercase',
               }}
             >
               Fechar
@@ -606,32 +875,5 @@ function TutorTextWithCitations({ text }: { text: string }) {
         </div>
       )}
     </>
-  )
-}
-
-function StatCard({ label, value, color, icon: Icon }: {
-  label: string; value: string; color: string
-  icon?: React.ComponentType<{ size?: number; color?: string }>
-}) {
-  return (
-    <div style={{
-      background: '#080c14', border: `1px solid ${color}33`,
-      borderRadius: 10, padding: '10px 14px',
-      display: 'flex', alignItems: 'center', gap: 12,
-    }}>
-      {Icon && (
-        <div style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: `${color}1A`, border: `1px solid ${color}55`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <Icon size={15} color={color} />
-        </div>
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6 }}>{label}</div>
-        <div style={{ fontSize: 17, fontWeight: 700, color, fontFamily: "'JetBrains Mono', monospace", marginTop: 1 }}>{value}</div>
-      </div>
-    </div>
   )
 }

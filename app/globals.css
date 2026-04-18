@@ -173,9 +173,12 @@ input[type="range"]::-moz-range-thumb:hover {
   }
   .worker-lab-container > aside {
     width: 100% !important;
+    max-width: 100% !important;
     max-height: none !important;
     overflow: visible !important;
     order: 2 !important;
+    position: static !important;
+    top: auto !important;
   }
   .worker-lab-container > .worker-lab-main {
     width: 100% !important;
@@ -356,6 +359,39 @@ input[type="range"]::-moz-range-thumb:hover {
 @keyframes audioIdlePulse {
   0%, 100% { box-shadow: 0 0 8px rgba(251,191,36,0.3); }
   50%      { box-shadow: 0 0 16px rgba(251,191,36,0.6); }
+}
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   WORKER LAB — arquitetura desktop: main + aside
+   Mobile colapsa via @media abaixo (regras !important já existem)
+   ════════════════════════════════════════════════════════════ */
+
+.worker-lab-container {
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
+  align-items: flex-start;
+}
+.worker-lab-main {
+  flex: 1 1 62%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.worker-lab-aside {
+  flex: 1 1 38%;
+  min-width: 260px;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: sticky;
+  top: 12px;
 }
 
 /* ════════════════════════════════════════════════════════════

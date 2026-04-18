@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { SECTORS, DEFAULT_SECTOR, getNRsForSector } from '@/data/sectors'
 import { NR_INDEX } from '@/data/nr-index'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -11,8 +11,6 @@ import StorytellingModal from '@/components/StorytellingModal'
 import BrazilMapButton from '@/components/BrazilMapButton'
 import BrazilMapModal from '@/components/BrazilMapModal'
 import { UF_META } from '@/data/uf-meta'
-
-const UF_STORAGE_KEY = 'eduvem.selectedUF'
 
 const C = {
   bg: '#050d1a', cyan: '#00d4ff', muted: '#94a3b8', dim: '#64748b',
@@ -39,18 +37,9 @@ export default function HomePage() {
   const [selectedUFCodarea, setSelectedUFCodarea] = useState<string | null>(null)
   const isMobile = useIsMobile()
 
-  // Hidrata UF do localStorage no cliente
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(UF_STORAGE_KEY)
-      if (saved && UF_META[saved]) setSelectedUFCodarea(saved)
-    } catch { /* localStorage indisponivel */ }
-  }, [])
-
   const selectedUF = selectedUFCodarea ? UF_META[selectedUFCodarea] : null
   const handleUFSelect = (codarea: string) => {
     setSelectedUFCodarea(codarea)
-    try { localStorage.setItem(UF_STORAGE_KEY, codarea) } catch { /* */ }
     setShowMap(false)
   }
   const sector = SECTORS.find(s => s.slug === activeSector)!
