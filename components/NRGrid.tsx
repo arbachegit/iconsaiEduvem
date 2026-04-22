@@ -226,8 +226,16 @@ function NRCard({ nr, sectorColor, onOpen, delay, progress }: {
   const maxDiffCount = Math.max(1, p?.easierCount || 0, p?.sameCount || 0, p?.harderCount || 0)
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onOpen(nr)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen(nr)
+        }
+      }}
       className="nr-card"
       aria-label={`Abrir dossiê ${nr.code}: ${nr.title}`}
       style={{
@@ -488,7 +496,7 @@ function NRCard({ nr, sectorColor, onOpen, delay, progress }: {
           Inspecionado
         </span>
       )}
-    </button>
+    </div>
   )
 }
 
