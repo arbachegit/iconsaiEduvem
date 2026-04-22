@@ -131,13 +131,24 @@ export function ExerciseWindow({ exerciseId, prompt, hints, expectedInputExample
       const res = await fetch('/api/eduven/debug', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ submission_id: submissionId }),
+        body: JSON.stringify({
+          exercise_id: exerciseId,
+          submission_id: submissionId,
+          prompt,
+          user_input: userInput,
+          previous_feedback: output,
+        }),
       })
       const data = await res.json()
-      setDebugText(data.debugText || 'Erro ao gerar debug.')
+      if (!res.ok) {
+        setDebugText(data.error ? `Não consegui gerar a explicação: ${data.error}` : 'Não consegui gerar a explicação agora. Tente de novo em instantes.')
+        setState('debug_complete')
+        return
+      }
+      setDebugText(data.debugText || 'A Ella ficou sem palavras dessa vez. Tente de novo.')
       setState('debug_complete')
     } catch {
-      setDebugText('Erro de conexão ao gerar debug.')
+      setDebugText('Erro de conexão ao gerar debug. Verifique sua internet e tente de novo.')
       setState('debug_complete')
     }
   }

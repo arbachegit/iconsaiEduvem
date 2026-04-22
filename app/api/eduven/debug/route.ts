@@ -44,7 +44,7 @@ Máximo 4 parágrafos. Português BR.`
       })
       if (res.ok) {
         const data = await res.json()
-        return NextResponse.json({ debugOutput: data.content?.[0]?.text || 'A Ella está pensando...' })
+        return NextResponse.json({ debugText: data.content?.[0]?.text || 'A Ella está pensando...' })
       }
     }
 
@@ -57,7 +57,7 @@ Máximo 4 parágrafos. Português BR.`
       })
       if (res.ok) {
         const data = await res.json()
-        return NextResponse.json({ debugOutput: data.choices?.[0]?.message?.content || '' })
+        return NextResponse.json({ debugText: data.choices?.[0]?.message?.content || '' })
       }
     }
 
